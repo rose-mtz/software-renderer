@@ -4,9 +4,12 @@
 #include "Window.h"
 #include "Math.h"
 
-// 1D array w/ top left pixel being (0,0)
-// TODO: maybe make this a 2D array and flip so bottom left is (0,0), thats what I know
+// Device space: top left of screen is (0,0)
+
+// 1D array, first pixel is top-left pixel, last is bottom right pixel
 Vec4f* color_buffer = nullptr;
+
+Vec2f mouse_pos;
 
 void resize_color_buffer();
 void clear_color_buffer(Vec4f color);
@@ -38,12 +41,17 @@ int main()
                 resize_window(event.window.data1, event.window.data2);   
                 resize_color_buffer();
             }
+            else if (event.type == SDL_EVENT_MOUSE_MOTION)
+            {
+                mouse_pos.x = event.motion.x;
+                mouse_pos.y = event.motion.y;
+            }
         }
 
         clear_color_buffer(Vec4f(1.0f, 0.0f, 1.0f, 1.0f));
 
-        // Draw one point at center of screen
-        rasterize_point(Vec3f(window.width/2.0f, window.height/2.0f, 0.0f), Vec4f(1.0f, 1.0f, 1.0f, 1.0f), 20);
+        // Draw one point that follows mouse
+        rasterize_point(Vec3f(mouse_pos.x, mouse_pos.y, 0.0f), Vec4f(1.0f, 1.0f, 1.0f, 1.0f), 8);
 
         blit_window(color_buffer);
     }
@@ -67,8 +75,9 @@ void clear_color_buffer(Vec4f color)
 
 void rasterize_point(Vec3f point, Vec4f color, int width)
 {
-    // width can be 2x2, 4x4, 6x6, ...
-    // Ignoring clipping, depth, and AA for now.
+    // Assumes point is in device coords, and is inside bounds.
+    // Width can be 2x2, 4x4, 6x6, ...
+    // Ignoring depth, and AA for now
 
     // Center of point
     int center_x = point.x; // round down
@@ -80,13 +89,13 @@ void rasterize_point(Vec3f point, Vec4f color, int width)
 
     for (int i = bottom_left_y; i < bottom_left_y + width; i++)
     {
+        if (i < 0 || i >= window.height) continue; // out of bounds fragment
+
         for (int j = bottom_left_x; j < bottom_left_x + width; j++)
         {
-            // Frag grid coords in device space
-            int pixel_x = j;
-            int pixel_y = (window.height - 1) - i; // flip cause top left is (0,0)
+            if (j < 0 || j >= window.width) continue; // out of bounds fragment
 
-            int index = pixel_y * window.width + pixel_x;
+            int index = i * window.width + j;
             color_buffer[index] = color;
         }
     }
