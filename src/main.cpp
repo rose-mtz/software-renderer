@@ -2,6 +2,7 @@
 #include <iostream>
 #include <chrono>
 #include <cmath>
+#include <algorithm>
 #include "Window.h"
 #include "Math.h"
 
@@ -16,6 +17,7 @@ void resize_color_buffer();
 void clear_color_buffer(Vec4f color);
 void rasterize_point(Vec3f point, Vec4f color, int width);
 void rasterize_line(Vec2f point_1, Vec2f point_2, Vec4f color, int width);
+void rasterize_trapezoid(Vec2f p1, Vec2f p2, Vec2f p3, Vec2f p4, Vec4f color);
 
 int main()
 {
@@ -52,8 +54,17 @@ int main()
 
         clear_color_buffer(Vec4f(1.0f, 0.0f, 1.0f, 1.0f));
 
-        rasterize_line(Vec2f(window.width/2.0f,window.height/2.0f), mouse_pos, Vec4f(1.0f, 1.0f, 1.0f, 1.0f), 10);
-        rasterize_point(Vec3f(mouse_pos.x, mouse_pos.y, 0.0f), Vec4f(1.0f, 0.0f, 0.0f, 1.0f), 5);
+        // rasterize_line(Vec2f(window.width/2.0f,window.height/2.0f), mouse_pos, Vec4f(1.0f, 1.0f, 1.0f, 1.0f), 10);
+        // rasterize_point(Vec3f(mouse_pos.x, mouse_pos.y, 0.0f), Vec4f(1.0f, 0.0f, 0.0f, 1.0f), 5);
+
+        float bottom_y = window.height * 0.25f;
+        Vec2f bottom_left (window.width * 0.20, bottom_y);
+        Vec2f bottom_right (window.width * 0.80, bottom_y);
+        float top_y = mouse_pos.y; // window.height * 0.75;
+        Vec2f top_left (window.width* 0.15, top_y);
+        Vec2f top_right (mouse_pos.x, top_y);
+
+        rasterize_trapezoid(bottom_left, top_left, top_right, bottom_right, Vec4f(1.0f, 1.0f, 1.0f, 1.0f));
 
         blit_window(color_buffer);
     }
@@ -172,9 +183,66 @@ void rasterize_line(Vec2f point_1, Vec2f point_2, Vec4f color, int width)
         cur_point.y += inc_y;
 
         // March ends when past point_2
-        if ((steep_slope && cur_point.y > point_2.y) || (!steep_slope && cur_point.x > point_2.x))
+        if ((steep_slope && cur_point.y > point_2.y) || (!steep_slope && cur_point.x > point_2.x)) // BUG?: point_2.x/y = right/top edge of screen
         {
             break;
         }
+    }
+}
+
+// Trapezoid MUST have flat top & bottoms
+void rasterize_trapezoid(Vec2f p1, Vec2f p2, Vec2f p3, Vec2f p4, Vec4f color)
+{  
+    // IDEA: I think its safe to assume culling for backfaceing traps has already occurred
+    // IDEA: raster policy: don't rasterize at or past top edge
+    // IDEA: raster policy: don't rasterize at or past right edge
+
+    // Sort by y (bubble sort)
+    if (p1.y > p2.y) std::swap(p1,p2);
+    if (p2.y > p3.y) std::swap(p2,p3);
+    if (p3.y > p4.y) std::swap(p3,p4);
+    if (p2.y > p3.y) std::swap(p2,p3);
+
+    // Sort by x
+    if (p1.x > p2.x) std::swap(p1,p2);
+    if (p3.x > p4.x) std::swap(p3,p4);
+
+    //  p1 is bottom left
+    //  p2 is bottom right
+    //  p3 is top left
+    //  p4 is top right
+
+    float dx_dy_l = (p3.x - p1.x) / (p3.y - p1.y);
+    float dx_dy_r = (p4.x - p2.x) / (p4.y - p2.y);
+
+    float delta_y = 1.0f;
+
+    float delta_h_l = ceil(p1.y) - p1.y;
+    float delta_w_l = delta_h_l * dx_dy_l;
+    Vec2f cur_p_l (p1.x + delta_w_l, p1.y + delta_h_l);
+
+    float delta_h_r = ceil(p2.y) - p2.y;
+    float delta_w_r = delta_h_r * dx_dy_r;
+    Vec2f cur_p_r (p2.x + delta_w_r, p2.y + delta_h_r);
+
+    while (cur_p_l.y < p3.y) // March up sides of trapezoid
+    {
+        int pixel_x = cur_p_l.x; // floor
+        int pixel_y = cur_p_l.y; // floor, but should already be integer (decimal part is all zeros)
+        int index = pixel_x + pixel_y * window.width;
+
+        while (pixel_x < cur_p_r.x) // March left to right across trapezoid
+        {
+            color_buffer[index] = color;
+
+            pixel_x++;
+            index++;
+        }
+
+        cur_p_l.x += dx_dy_l;
+        cur_p_l.y += delta_y;
+        
+        cur_p_r.x += dx_dy_r;
+        cur_p_r.y += delta_y;
     }
 }
