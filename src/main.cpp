@@ -7,7 +7,6 @@
 #include "Window.h"
 #include "Math.h"
 
-// Device space: top left of screen is (0,0)
 // 1D array, first pixel is top-left pixel, last is bottom right pixel
 Vec3f* color_buffer = nullptr;
 
@@ -76,11 +75,11 @@ void handle_events()
         else if (event.type == SDL_EVENT_MOUSE_MOTION)
         {
             mouse_pos.x = event.motion.x;
-            mouse_pos.y = event.motion.y;
+            mouse_pos.y = window.height - event.motion.y;
         }
         else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
         {
-            list_of_user_polys[active_user_poly].push_back(Vec2f(event.button.x, event.button.y));
+            list_of_user_polys[active_user_poly].push_back(Vec2f(event.button.x, window.height - event.button.y));
         }
         else if (event.type == SDL_EVENT_KEY_DOWN)
         {

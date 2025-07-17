@@ -56,11 +56,17 @@ int to_rgb_int(Vec3f rgb)
 }
 
 // Assumes pixels is same size as global window.
+// Note, SDL has top left as (0,0), but input should have (0,0) as bottom left
 void blit_window(Vec3f *pixels)
 {
-    for (int i = 0; i < window.width * window.height; i++)
+    int pixel_count = window.width * window.height;
+    int offset = pixel_count;
+    for (int i = 0; i < pixel_count; i++)
     {
-        window.pixels[i] = to_rgb_int(pixels[i]);
+        if (i % window.width == 0) offset -= window.width;
+        int mapped_index = offset + (i % window.width);
+
+        window.pixels[mapped_index] = to_rgb_int(pixels[i]);
     }
 
     SDL_BlitSurface(window.draw_surface, NULL, SDL_GetWindowSurface(window.handle), NULL);
