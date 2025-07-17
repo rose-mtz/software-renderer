@@ -12,4 +12,4 @@ struct Window
 
 void init_window(int width, int height);
 void resize_window(int width, int height);
-void blit_window(Vec4f* pixels);
+void blit_window(Vec3f* pixels);

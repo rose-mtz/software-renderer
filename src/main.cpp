@@ -8,9 +8,8 @@
 #include "Math.h"
 
 // Device space: top left of screen is (0,0)
-
 // 1D array, first pixel is top-left pixel, last is bottom right pixel
-Vec4f* color_buffer = nullptr;
+Vec3f* color_buffer = nullptr;
 
 Vec2f mouse_pos;
 bool running = true;
@@ -22,12 +21,12 @@ auto last_frame_start = std::chrono::high_resolution_clock::now();
 float dt = 0;
 
 void resize_color_buffer();
-void clear_color_buffer(Vec4f color);
-void rasterize_point(Vec2f point, Vec4f color, int width);
-void rasterize_line(Vec2f point_1, Vec2f point_2, Vec4f color, int width);
-void rasterize_trapezoid(Vec2f p1, Vec2f p2, Vec2f p3, Vec2f p4, Vec4f color);
+void clear_color_buffer(Vec3f color);
+void rasterize_point(Vec2f point, Vec3f color, int width);
+void rasterize_line(Vec2f point_1, Vec2f point_2, Vec3f color, int width);
+void rasterize_trapezoid(Vec2f p1, Vec2f p2, Vec2f p3, Vec2f p4, Vec3f color);
 void rasterize_polygon(std::vector<Vec2f> polygon);
-void rasterize_triangle(Vec2f p1, Vec2f p2, Vec2f p3, Vec4f color);
+void rasterize_triangle(Vec2f p1, Vec2f p2, Vec2f p3, Vec3f color);
 
 void draw();
 void handle_events();
@@ -93,7 +92,7 @@ void handle_events()
 
 void draw()
 {
-    clear_color_buffer(Vec4f(0.0f, 0.0f, 0.0f, 1.0f));
+    clear_color_buffer(Vec3f(0.0f, 0.0f, 0.0f));
 
     for (int i = 0; i < list_of_user_polys.size(); i++)
     {
@@ -111,13 +110,13 @@ void draw()
                 Vec2f start = poly[j];
                 Vec2f end = poly[(j + 1) % poly.size()];
 
-                rasterize_line(start, end, Vec4f(1.0f, 0.0f, 0.0f, 1.0f), 2);
+                rasterize_line(start, end, Vec3f(1.0f, 0.0f, 0.0f), 2);
             }
         }
 
         for (int j = 0; j < poly.size(); j++)
         {
-            rasterize_point(poly[j], Vec4f(1.0f, 0.0f, 0.0f, 1.0f), 5);
+            rasterize_point(poly[j], Vec3f(1.0f, 0.0f, 0.0f), 5);
         }
     }
 
@@ -129,10 +128,10 @@ void resize_color_buffer()
 {
     if (!color_buffer) delete[] color_buffer;
 
-    color_buffer = new Vec4f[window.width * window.height];
+    color_buffer = new Vec3f[window.width * window.height];
 }
 
-void clear_color_buffer(Vec4f color)
+void clear_color_buffer(Vec3f color)
 {
     for (int i = 0; i < window.width * window.height; i++)
     {
@@ -140,7 +139,7 @@ void clear_color_buffer(Vec4f color)
     }
 }
 
-void rasterize_point(Vec2f point, Vec4f color, int width)
+void rasterize_point(Vec2f point, Vec3f color, int width)
 {
     // Assumes point is in device coords, and is inside bounds.
     // Ignoring depth, and AA for now
@@ -170,7 +169,7 @@ void rasterize_point(Vec2f point, Vec4f color, int width)
     }
 }
 
-void rasterize_line(Vec2f point_1, Vec2f point_2, Vec4f color, int width)
+void rasterize_line(Vec2f point_1, Vec2f point_2, Vec3f color, int width)
 {
     // Each increase in width adds 1 layer of 'thickness' (i.e two lines on each side)
     int line_count = 1 + (width - 1) * 2;
@@ -308,11 +307,11 @@ void rasterize_polygon(std::vector<Vec2f> polygon)
         // Rasterize bottom piece (if its triangle or trapezoid)
         if (split_poly[1].size() == 4)
         {
-            rasterize_trapezoid(split_poly[1][0], split_poly[1][1], split_poly[1][2], split_poly[1][3], Vec4f(1.0f, 1.0f, 1.0f, 1.0f));
+            rasterize_trapezoid(split_poly[1][0], split_poly[1][1], split_poly[1][2], split_poly[1][3], Vec3f(1.0f, 1.0f, 1.0f));
         }
         else if (split_poly[1].size() == 3)
         {
-            rasterize_triangle(split_poly[1][0], split_poly[1][1], split_poly[1][2], Vec4f(1.0f, 1.0f, 1.0f, 1.0f));
+            rasterize_triangle(split_poly[1][0], split_poly[1][1], split_poly[1][2], Vec3f(1.0f, 1.0f, 1.0f));
         }
 
         // Keep top piece of polygon
@@ -320,7 +319,7 @@ void rasterize_polygon(std::vector<Vec2f> polygon)
     }
 }
 
-void rasterize_triangle(Vec2f p1, Vec2f p2, Vec2f p3, Vec4f color)
+void rasterize_triangle(Vec2f p1, Vec2f p2, Vec2f p3, Vec3f color)
 {
     // for now I'll just pass it over to rasterize trapezoid,
     // so triangles must have a flat top/bottom
@@ -341,7 +340,7 @@ void rasterize_triangle(Vec2f p1, Vec2f p2, Vec2f p3, Vec4f color)
 }
 
 // Trapezoid MUST have flat top & bottoms
-void rasterize_trapezoid(Vec2f p1, Vec2f p2, Vec2f p3, Vec2f p4, Vec4f color)
+void rasterize_trapezoid(Vec2f p1, Vec2f p2, Vec2f p3, Vec2f p4, Vec3f color)
 {  
     // IDEA: I think its safe to assume culling for backfaceing traps has already occurred
     // IDEA: raster policy: don't rasterize at or past top edge

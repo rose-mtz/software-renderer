@@ -45,23 +45,22 @@ void resize_window(int width, int height)
 }
 
 // Assumes rgba are all in [0,1]
-int to_rgba_int(Vec4f rgba)
+int to_rgb_int(Vec3f rgb)
 {
-    int r_int = (rgba.x * 255.9999f);
-    int g_int = (rgba.y * 255.9999f);
-    int b_int = (rgba.z * 255.9999f);
-    int a_int = (rgba.w * 255.9999f);
+    int r_int = (rgb.x * 255.9999f);
+    int g_int = (rgb.y * 255.9999f);
+    int b_int = (rgb.z * 255.9999f);
 
-    int result = (a_int << 24) | (b_int << 16) | (g_int << 8) | r_int;
+    int result = (0xFF << 24) | (b_int << 16) | (g_int << 8) | r_int;
     return result;
 }
 
 // Assumes pixels is same size as global window.
-void blit_window(Vec4f *pixels)
+void blit_window(Vec3f *pixels)
 {
     for (int i = 0; i < window.width * window.height; i++)
     {
-        window.pixels[i] = to_rgba_int(pixels[i]);
+        window.pixels[i] = to_rgb_int(pixels[i]);
     }
 
     SDL_BlitSurface(window.draw_surface, NULL, SDL_GetWindowSurface(window.handle), NULL);
