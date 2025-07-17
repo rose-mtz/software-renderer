@@ -13,9 +13,13 @@
 Vec4f* color_buffer = nullptr;
 
 Vec2f mouse_pos;
+bool running = true;
 
 int active_user_poly = 0;
 std::vector<std::vector<Vec2f>> list_of_user_polys (1);
+
+auto last_frame_start = std::chrono::high_resolution_clock::now();
+float dt = 0;
 
 void resize_color_buffer();
 void clear_color_buffer(Vec4f color);
@@ -25,78 +29,99 @@ void rasterize_trapezoid(Vec2f p1, Vec2f p2, Vec2f p3, Vec2f p4, Vec4f color);
 void rasterize_polygon(std::vector<Vec2f> polygon);
 void rasterize_triangle(Vec2f p1, Vec2f p2, Vec2f p3, Vec4f color);
 
+void draw();
+void handle_events();
+void handle_time();
+void init();
+
 int main()
+{
+    init();
+
+    while (running)
+    {
+        handle_time();
+        handle_events();
+        draw();
+    }
+}
+
+void init()
 {
     init_window(640, 480);    
     resize_color_buffer();
+}
 
-    bool running = true;
-    auto last_frame_start = std::chrono::high_resolution_clock::now();
-    while (running)
+void handle_time()
+{
+    auto current_frame_start = std::chrono::high_resolution_clock::now();
+    dt = std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(current_frame_start - last_frame_start).count();
+    last_frame_start = current_frame_start;
+    std::cout << dt << std::endl;
+}
+
+void handle_events()
+{
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
     {
-        auto current_frame_start = std::chrono::high_resolution_clock::now();
-        float dt = std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(current_frame_start - last_frame_start).count();
-        last_frame_start = current_frame_start;
-        std::cout << dt << std::endl;
-
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
+        if (event.type == SDL_EVENT_QUIT)
         {
-            if (event.type == SDL_EVENT_QUIT)
-            {
-                running = false;
-            }
-            else if (event.type == SDL_EVENT_WINDOW_RESIZED)
-            {
-                resize_window(event.window.data1, event.window.data2);   
-                resize_color_buffer();
-            }
-            else if (event.type == SDL_EVENT_MOUSE_MOTION)
-            {
-                mouse_pos.x = event.motion.x;
-                mouse_pos.y = event.motion.y;
-            }
-            else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
-            {
-                list_of_user_polys[active_user_poly].push_back(Vec2f(event.button.x, event.button.y));
-            }
-            else if (event.type == SDL_EVENT_KEY_DOWN)
-            {
-                active_user_poly++;
-                list_of_user_polys.push_back(std::vector<Vec2f>());
-            }
+            running = false;
+        }
+        else if (event.type == SDL_EVENT_WINDOW_RESIZED)
+        {
+            resize_window(event.window.data1, event.window.data2);   
+            resize_color_buffer();
+        }
+        else if (event.type == SDL_EVENT_MOUSE_MOTION)
+        {
+            mouse_pos.x = event.motion.x;
+            mouse_pos.y = event.motion.y;
+        }
+        else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
+        {
+            list_of_user_polys[active_user_poly].push_back(Vec2f(event.button.x, event.button.y));
+        }
+        else if (event.type == SDL_EVENT_KEY_DOWN)
+        {
+            active_user_poly++;
+            list_of_user_polys.push_back(std::vector<Vec2f>());
+        }
+    }
+}
+
+void draw()
+{
+    clear_color_buffer(Vec4f(0.0f, 0.0f, 0.0f, 1.0f));
+
+    for (int i = 0; i < list_of_user_polys.size(); i++)
+    {
+        std::vector<Vec2f>& poly = list_of_user_polys[i];
+
+        if (poly.size() > 2)
+        {
+            rasterize_polygon(poly);
         }
 
-        clear_color_buffer(Vec4f(0.0f, 0.0f, 0.0f, 1.0f));
-
-        for (int i = 0; i < list_of_user_polys.size(); i++)
+        if (poly.size() > 1)
         {
-            std::vector<Vec2f>& poly = list_of_user_polys[i];
-
-            if (poly.size() > 2)
-            {
-                rasterize_polygon(poly);
-            }
-
-            if (poly.size() > 1)
-            {
-                for (int j = 0; j < poly.size(); j++)
-                {
-                    Vec2f start = poly[j];
-                    Vec2f end = poly[(j + 1) % poly.size()];
-
-                    rasterize_line(start, end, Vec4f(1.0f, 0.0f, 0.0f, 1.0f), 2);
-                }
-            }
-
             for (int j = 0; j < poly.size(); j++)
             {
-                rasterize_point(poly[j], Vec4f(1.0f, 0.0f, 0.0f, 1.0f), 5);
+                Vec2f start = poly[j];
+                Vec2f end = poly[(j + 1) % poly.size()];
+
+                rasterize_line(start, end, Vec4f(1.0f, 0.0f, 0.0f, 1.0f), 2);
             }
         }
 
-        blit_window(color_buffer);
+        for (int j = 0; j < poly.size(); j++)
+        {
+            rasterize_point(poly[j], Vec4f(1.0f, 0.0f, 0.0f, 1.0f), 5);
+        }
     }
+
+    blit_window(color_buffer);
 }
 
 // Resizes/init to match window size
