@@ -8,10 +8,10 @@
 #include "Math.h"
 #include "Rasterize.h"
 
+Buffer* low_res_buffer = nullptr;
+Buffer* screen_res_buffer = nullptr;
 
-Buffer* render_buffer = nullptr;
-
-Vec2f mouse_pos;
+// Vec2f mouse_pos;
 bool running = true;
 
 int active_user_poly = 0;
@@ -19,9 +19,6 @@ std::vector<std::vector<Vec2f>> list_of_user_polys (1);
 
 auto last_frame_start = std::chrono::high_resolution_clock::now();
 float dt = 0;
-
-void resize_buffer(Buffer* buffer, int width, int height);
-void clear_buffer(Vec3f color, Buffer* buffer);
 
 void draw();
 void handle_events();
@@ -42,10 +39,12 @@ int main()
 
 void init()
 {
-    render_buffer = new Buffer();
+    screen_res_buffer = new Buffer();
+    low_res_buffer = new Buffer();
 
     init_window(640, 480);    
-    resize_buffer(render_buffer, 640, 480);
+    resize_buffer(screen_res_buffer, 640, 480);
+    resize_buffer(low_res_buffer, 160, 120);
 }
 
 void handle_time()
@@ -71,16 +70,18 @@ void handle_events()
             int new_height = event.window.data2;
 
             resize_window(new_width, new_height);
-            resize_buffer(render_buffer, new_width, new_height);
+            resize_buffer(screen_res_buffer, new_width, new_height);
         }
         else if (event.type == SDL_EVENT_MOUSE_MOTION)
         {
-            mouse_pos.x = event.motion.x;
-            mouse_pos.y = window.height - event.motion.y;
-        }
+            // mouse_pos.x = event.motion.x;
+            // mouse_pos.y = window.height - event.motion.y;
+        } 
         else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
         {
-            list_of_user_polys[active_user_poly].push_back(Vec2f(event.button.x, window.height - event.button.y));
+            float x_basis_scale = ((float) low_res_buffer->width)  / screen_res_buffer->width;
+            float y_basis_scale = ((float) low_res_buffer->height) / screen_res_buffer->height;
+            list_of_user_polys[active_user_poly].push_back(Vec2f(event.button.x * x_basis_scale, (window.height - event.button.y) * y_basis_scale));
         }
         else if (event.type == SDL_EVENT_KEY_DOWN)
         {
@@ -92,7 +93,8 @@ void handle_events()
 
 void draw()
 {
-    clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), render_buffer);
+    clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), screen_res_buffer);
+    clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), low_res_buffer);
 
     for (int i = 0; i < list_of_user_polys.size(); i++)
     {
@@ -100,7 +102,7 @@ void draw()
 
         if (poly.size() > 2)
         {
-            rasterize_polygon(poly, render_buffer);
+            rasterize_polygon(poly, low_res_buffer);
         }
 
         if (poly.size() > 1)
@@ -110,32 +112,16 @@ void draw()
                 Vec2f start = poly[j];
                 Vec2f end = poly[(j + 1) % poly.size()];
 
-                rasterize_line(start, end, Vec3f(1.0f, 0.0f, 0.0f), 2, render_buffer);
+                rasterize_line(start, end, Vec3f(1.0f, 0.0f, 0.0f), 2, low_res_buffer);
             }
         }
 
         for (int j = 0; j < poly.size(); j++)
         {
-            rasterize_point(poly[j], Vec3f(1.0f, 0.0f, 0.0f), 5, render_buffer);
+            rasterize_point(poly[j], Vec3f(1.0f, 0.0f, 0.0f), 5, low_res_buffer);
         }
     }
 
-    blit_window(render_buffer->pixels);
-}
-
-void resize_buffer(Buffer* buffer, int width, int height)
-{
-    if (!buffer->pixels) delete[] buffer->pixels;
-
-    buffer->pixels = new Vec3f[width * height];
-    buffer->width = width;
-    buffer->height = height;
-}
-
-void clear_buffer(Vec3f color, Buffer* buffer)
-{
-    for (int i = 0; i < buffer->width * buffer->height; i++)
-    {
-        buffer->pixels[i] = color;
-    }
+    blit_buffer(low_res_buffer, screen_res_buffer);
+    blit_window(screen_res_buffer->pixels);
 }
