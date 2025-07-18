@@ -15,7 +15,7 @@ Buffer* screen_res_buffer = nullptr;
 bool running = true;
 
 int active_user_poly = 0;
-std::vector<std::vector<Vec2f>> list_of_user_polys (1);
+std::vector<std::vector<Vertex>> list_of_user_polys (1);
 
 auto last_frame_start = std::chrono::high_resolution_clock::now();
 float dt = 0;
@@ -79,14 +79,18 @@ void handle_events()
         } 
         else if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN)
         {
+            Vec3f POLY_COLOR  (1.0f, 1.0f, 1.0f);
             float x_basis_scale = ((float) low_res_buffer->width)  / screen_res_buffer->width;
             float y_basis_scale = ((float) low_res_buffer->height) / screen_res_buffer->height;
-            list_of_user_polys[active_user_poly].push_back(Vec2f(event.button.x * x_basis_scale, (window.height - event.button.y) * y_basis_scale));
+            Vertex to_add;
+            to_add.color = POLY_COLOR;
+            to_add.device = Vec2f(event.button.x * x_basis_scale, (window.height - event.button.y) * y_basis_scale);
+            list_of_user_polys[active_user_poly].push_back(to_add);
         }
         else if (event.type == SDL_EVENT_KEY_DOWN)
         {
             active_user_poly++;
-            list_of_user_polys.push_back(std::vector<Vec2f>());
+            list_of_user_polys.push_back(std::vector<Vertex>());
         }
     }
 }
@@ -96,9 +100,12 @@ void draw()
     clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), screen_res_buffer);
     clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), low_res_buffer);
 
+    Vec3f POINT_COLOR (0.0f, 1.0f, 0.0f);
+    Vec3f LINE_COLOR  (1.0f, 0.0f, 0.0f);
+
     for (int i = 0; i < list_of_user_polys.size(); i++)
     {
-        std::vector<Vec2f>& poly = list_of_user_polys[i];
+        std::vector<Vertex>& poly = list_of_user_polys[i];
 
         if (poly.size() > 2)
         {
@@ -109,16 +116,22 @@ void draw()
         {
             for (int j = 0; j < poly.size(); j++)
             {
-                Vec2f start = poly[j];
-                Vec2f end = poly[(j + 1) % poly.size()];
+                Vertex start = poly[j];
+                Vertex end = poly[(j + 1) % poly.size()];
 
-                rasterize_line(start, end, Vec3f(1.0f, 0.0f, 0.0f), 2, low_res_buffer);
+                start.color = LINE_COLOR;
+                end.color = LINE_COLOR;
+
+                rasterize_line(start, end, 2, low_res_buffer);
             }
         }
 
         for (int j = 0; j < poly.size(); j++)
         {
-            rasterize_point(poly[j], Vec3f(1.0f, 0.0f, 0.0f), 5, low_res_buffer);
+            Vertex v = poly[j];
+            v.color = POINT_COLOR;
+
+            rasterize_point(v, 5, low_res_buffer);
         }
     }
 

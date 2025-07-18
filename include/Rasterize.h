@@ -3,6 +3,12 @@
 #include "FrameBuffer.h"
 #include <vector>
 
-void rasterize_point(Vec2f point, Vec3f color, int width, Buffer* buffer);
-void rasterize_line(Vec2f point_1, Vec2f point_2, Vec3f color, int width, Buffer* buffer);
-void rasterize_polygon(std::vector<Vec2f> polygon, Buffer* buffer);
+struct Vertex
+{
+    Vec2f device;
+    Vec3f color;
+};
+
+void rasterize_point(Vertex v, int width, Buffer* buffer);
+void rasterize_line(Vertex v0, Vertex v1, int width, Buffer* buffer);
+void rasterize_polygon(std::vector<Vertex> vertices, Buffer* buffer);
