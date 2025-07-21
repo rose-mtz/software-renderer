@@ -1,34 +1,61 @@
 #include "Rasterize.h"
 #include <algorithm>
+#include <cassert>
 
-void rasterize_point(Vertex v, int width, Buffer* buffer)
+
+void rasterize_point(Vertex v, int radius, Buffer* buffer)
 {
+    // KNOWN ISSUE: 
+    //      for small radius sizes (<5), the pixels may appear not so square, not circular
+    //      for larger radiuses this is not a problem
+    // PROPOSED SOLUTION: 
+    //      try centering center of circle at center instead of at integer points
+    //      or add aa
 
-    // Assumes point is in device coords, and is inside bounds.
-    // Ignoring depth, and AA for now
-    
-    // Width can be 2x2, 4x4, 6x6, ...
-    width = (width) * 2;
+    /**
+     * Process:
+     * 
+     * round vertex pos to nearest integer point
+     * 
+     * from bottom scanline to top scanline that circle spans
+     *     find x intercepts points at current scanline w/ circle
+     *     using current scanline and its x intercepts, rasterize the scanline
+     */
 
-    // Center of point
-    int center_x = v.device.x; // round down
-    int center_y = v.device.y; // round down
+    Vec2i center (round(v.device.x), round(v.device.y));
 
-    // Bottom left of point
-    int bottom_left_x  = center_x - width/2;
-    int bottom_left_y  = center_y - width/2;
+    int stop_scanline = center.y + radius;
+    int cur_scanline = center.y - radius;
 
-    for (int i = bottom_left_y; i < bottom_left_y + width; i++)
+    while (cur_scanline < stop_scanline)
     {
-        if (i < 0 || i >= buffer->height) continue; // out of bounds fragment
-
-        for (int j = bottom_left_x; j < bottom_left_x + width; j++)
+        int y_intercept = cur_scanline;
+        if (cur_scanline < center.y) 
         {
-            if (j < 0 || j >= buffer->width) continue; // out of bounds fragment
-
-            int index = i * buffer->width + j;
-            buffer->pixels[index] = v.color;
+            // for bottom part of circle, we use scanline above current to sample circle intercepts
+            y_intercept++; 
         }
+
+        // Relative to circle center (essential move circle to origin)
+        int y_rel = y_intercept - center.y;
+        // Intercept y_rel with circle centered at origin
+        float x_right_rel = sqrt(radius*radius - y_rel*y_rel);
+        float x_left_rel = -x_right_rel;
+        // Translates intercepts back
+        float x_left = x_left_rel + center.x;
+        float x_right = x_right_rel + center.x;
+
+        // columns of scanline
+        int cur_col = floor(x_left); // left intercept
+        int stop_col = ceil(x_right); // right intercept
+
+        while (cur_col < stop_col)
+        {
+            set_pixel(cur_col, cur_scanline, v.color, buffer);
+            cur_col++;
+        }
+
+        cur_scanline++;
     }
 }
 

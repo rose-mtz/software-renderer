@@ -44,7 +44,7 @@ void init()
 
     init_window(640, 480);    
     resize_buffer(screen_res_buffer, 640, 480);
-    resize_buffer(low_res_buffer, 160, 120);
+    resize_buffer(low_res_buffer, 320, 240);
 }
 
 void handle_time()
@@ -130,8 +130,9 @@ void draw()
         {
             Vertex v = poly[j];
             v.color = POINT_COLOR;
-
-            rasterize_point(v, 5, low_res_buffer);
+            int POINT_SIZE = 4;
+            
+            rasterize_point(v, POINT_SIZE, low_res_buffer);
         }
     }
 

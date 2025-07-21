@@ -1,12 +1,14 @@
 #include "FrameBuffer.h"
 #include <cassert>
 
-void set_pixel(int x, int y, Vec3f value, Buffer* buffer)
+// returns false if out-of-bounds
+bool set_pixel(int x, int y, Vec3f value, Buffer* buffer)
 {
-    assert(x >= 0 && x < buffer->width);
-    assert(y >= 0 && y < buffer->height);
+    if (x < 0 || x >= buffer->width) return false;
+    if (y < 0 || y >= buffer->height) return false;
 
     buffer->pixels[y * buffer->width + x] = value;
+    return true;
 }
 
 Vec3f get_pixel(int x, int y, Buffer* buffer)
