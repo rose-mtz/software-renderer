@@ -61,72 +61,48 @@ void rasterize_point(Vertex v, int radius, Buffer* buffer)
 
 void rasterize_line(Vertex v0, Vertex v1, int width, Buffer* buffer)
 {
+    Vec2f p0 = v0.device;
+    Vec2f p1 = v1.device;
+    float slope = (p1.y - p0.y) / (p1.x - p0.x);
 
-    // Each increase in width adds 1 layer of 'thickness' (i.e two lines on each side)
-    int line_count = 1 + (width - 1) * 2;
-
-    float m = (v1.device.y - v0.device.y) / (v1.device.x - v0.device.x);
-    float inc_x;
-    float inc_y;
-    float steep_slope = m > 1.0f || m < -1.0f;
- 
-    if (!steep_slope)
+    bool inverted_axis = slope > 1.0f || slope < -1.0f;
+    if (inverted_axis)
     {
-        // March in increasing x-direction
-        if (v0.device.x > v1.device.x) 
-        {
-            std::swap(v0, v1);
-        }   
+        slope = 1.0f/slope;
 
-        inc_x = 1.0f;
-        inc_y = m;
-    }
-    else
-    {
-        // March in increasing y-direction
-        if (v0.device.y > v1.device.y) 
-        {
-            std::swap(v0, v1);
-        }
-
-        inc_y = 1.0f;
-        inc_x = 1.0f/m;   
+        // Swap x and y
+        float temp = p0.x;
+        p0.x = p0.y;
+        p0.y = temp;
+        temp = p1.x;
+        p1.x = p1.y;
+        p1.y = temp;
     }
 
-    Vec2f cur_point = v0.device;
-    while (true) // March line
+    if (p0.x > p1.x) std::swap(p0, p1); // march in positive x direction (from p0 to p1)
+
+    float dy = slope; // dy = slope * dx = slope * 1 = slope
+    float y = p0.y;
+
+    int col = floor(p0.x);
+    int col_stop = ceil(p1.x);
+    while (col < col_stop)
     {
-        int rounded_x = std::round(cur_point.x);
-        int rounded_y = std::round(cur_point.y);
+        int row = floor(y);
 
-        for (int i = 0; i < line_count; i++) // thickness
+        int line_count = 1 + ((width - 1) * 2);
+        int cur_line = 0;
+        while (cur_line < line_count)
         {
-            if (!steep_slope)
-            {
-                int current_line_y = (rounded_y - (width - 1)) + i;
-                if (current_line_y < 0 || current_line_y >= buffer->height) continue; // out of bounds fragment
+            int current_line_row = (row - (width - 1)) + cur_line;
+            if (inverted_axis) set_pixel(current_line_row, col, v0.color, buffer);
+            else set_pixel(col, current_line_row, v0.color, buffer);
 
-                int index = rounded_x + current_line_y * buffer->width;
-                buffer->pixels[index] = v0.color; // temporary, needs interpolation
-            }
-            else
-            {
-                int current_line_x = (rounded_x - (width - 1)) + i;
-                if (current_line_x < 0 || current_line_x >= buffer->width) continue; // out of bounds fragment
-
-                int index = current_line_x + rounded_y * buffer->width;
-                buffer->pixels[index] = v0.color; // temporary, needs interpolation
-            }
+            cur_line++;
         }
 
-        cur_point.x += inc_x;
-        cur_point.y += inc_y;
-
-        // March ends when past point_2
-        if ((steep_slope && cur_point.y > v1.device.y) || (!steep_slope && cur_point.x > v1.device.x)) // IDEA: BUG: point_2.x/y = right/top edge of screen
-        {
-            break;
-        }
+        y += dy;
+        col++;
     }
 }
 
