@@ -11,4 +11,4 @@ struct Vertex
 
 void rasterize_point(Vertex v, int width, Buffer* buffer);
 void rasterize_line(Vertex v0, Vertex v1, int width, Buffer* buffer);
-void rasterize_polygon(std::vector<Vertex> vertices, Buffer* buffer);
+void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer);

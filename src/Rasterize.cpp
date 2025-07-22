@@ -90,6 +90,7 @@ void rasterize_line(Vertex v0, Vertex v1, int width, Buffer* buffer)
     {
         int row = floor(y);
 
+        // Line thickness
         int line_count = 1 + ((width - 1) * 2);
         int cur_line = 0;
         while (cur_line < line_count)
@@ -166,32 +167,27 @@ void rasterize_trapezoid(Vertex v0, Vertex v1, Vertex v2, Vertex v3, Buffer* buf
 }
 
 // Cuts a polygon into two pieces
-// polygon above cut line is 0
-// polygon bellow cut line is 1
-std::vector<std::vector<Vertex>> cut_polygon(std::vector<Vertex> polygon, float y)
+// Cut is horizontal and is at y
+void cut_polygon(std::vector<Vertex>* polygon, float y, std::vector<Vertex>* top, std::vector<Vertex>* bottom)
 {
     // IDEA: polygon MUST have some winding
 
-    std::vector<std::vector<Vertex>> to_return (2);
-    std::vector<Vertex>& top = to_return[0];
-    std::vector<Vertex>& bottom = to_return[1];
-
-    for (int i = 0; i < polygon.size(); i++)
+    for (int i = 0; i < polygon->size(); i++)
     {
-        Vertex cur = polygon[i];
+        Vertex cur = polygon->at(i);
         float cur_dy = y - cur.device.y;
 
         // Add current vertex to its respective list(s)
         if (cur_dy >= 0.0f)
         {
-            bottom.push_back(cur);
+            bottom->push_back(cur);
         }
         if (cur_dy <= 0.0f)
         {
-            top.push_back(cur);
+            top->push_back(cur);
         }
 
-        Vertex next = polygon[(i + 1) % polygon.size()];
+        Vertex next = polygon->at((i + 1) % polygon->size());
         float next_dy = y - next.device.y;
 
         // Check if we cross cut line on way to next vertex
@@ -206,12 +202,12 @@ std::vector<std::vector<Vertex>> cut_polygon(std::vector<Vertex> polygon, float 
             interpolated.device = interp_device_coord;
             interpolated.color = cur.color; // temporary, needs interpolation
 
-            top.push_back(interpolated);
-            bottom.push_back(interpolated);
+            top->push_back(interpolated);
+            bottom->push_back(interpolated);
         }
     }
 
-    return to_return;
+    // return to_return;
 }
 
 void rasterize_triangle(Vertex v0, Vertex v1, Vertex v2, Buffer* buffer)
@@ -234,8 +230,16 @@ void rasterize_triangle(Vertex v0, Vertex v1, Vertex v2, Buffer* buffer)
     }
 }
 
-void rasterize_polygon(std::vector<Vertex> vertices, Buffer* buffer)
+void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
 {
+    // Allocate vectors once
+    static std::vector<Vertex>* cur_polygon = new std::vector<Vertex>(15);
+    static std::vector<Vertex>* top = new std::vector<Vertex>(15);
+    static std::vector<Vertex>* bottom = new std::vector<Vertex>(15);
+    cur_polygon->clear();
+    top->clear();
+    bottom->clear();
+
     // Process: cut polygon into rasterize-able triangle or trapezoid
     // IDEA: polygon is flat, and convex
     // IDEA: polygon must have some winding
@@ -245,22 +249,24 @@ void rasterize_polygon(std::vector<Vertex> vertices, Buffer* buffer)
     for (int i = 0; i < sorted_heights.size(); i++) sorted_heights[i] = vertices[i].device.y;
     std::sort(sorted_heights.begin(), sorted_heights.end());
 
-    std::vector<Vertex> cur_polygon = vertices;
+    for (int i = 0; i < vertices.size(); i++) cur_polygon->push_back(vertices[i]);
+
     for (int i = 0; i < sorted_heights.size(); i++)
     {
-        std::vector<std::vector<Vertex>> split_poly = cut_polygon(cur_polygon, sorted_heights[i]);
+        cut_polygon(cur_polygon, sorted_heights[i], top, bottom);
 
-        // Rasterize bottom piece (if its triangle or trapezoid)
-        if (split_poly[1].size() == 4)
+        // Rasterize bottom piece
+        if (bottom->size() == 4)
         {
-            rasterize_trapezoid(split_poly[1][0], split_poly[1][1], split_poly[1][2], split_poly[1][3], buffer);
+            rasterize_trapezoid(bottom->at(0), bottom->at(1), bottom->at(2), bottom->at(3), buffer);
         }
-        else if (split_poly[1].size() == 3)
+        else if (bottom->size() == 3)
         {
-            rasterize_triangle(split_poly[1][0], split_poly[1][1], split_poly[1][2], buffer);
+            rasterize_triangle(bottom->at(0), bottom->at(1), bottom->at(2), buffer);
         }
 
-        // Keep top piece of polygon
-        cur_polygon = split_poly[0];
+        std::swap(cur_polygon, top);
+        top->clear();
+        bottom->clear();
     }
 }
