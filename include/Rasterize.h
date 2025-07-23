@@ -6,6 +6,7 @@
 struct Vertex
 {
     Vec2f device;
+    float depth;
     Vec3f color;
 };
 

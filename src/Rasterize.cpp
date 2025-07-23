@@ -126,43 +126,120 @@ void rasterize_trapezoid(Vertex v0, Vertex v1, Vertex v2, Vertex v3, Buffer* buf
     if (v0.device.x > v1.device.x) std::swap(v0,v1);
     if (v2.device.x > v3.device.x) std::swap(v2,v3);
 
+    float top_scanline = v3.device.y > v2.device.y ? v3.device.y : v2.device.y; // top of trapezoid, don't rasterize past
+
+    // Flat top and bottom trapezoid
+    assert(v0.device.y == v1.device.y);
+    assert(v2.device.y == v3.device.y);
+
     //  p1 is bottom left
     //  p2 is bottom right
     //  p3 is top left
     //  p4 is top right
 
-    float dx_dy_l = (v2.device.x - v0.device.x) / (v2.device.y - v0.device.y);
-    float dx_dy_r = (v3.device.x - v1.device.x) / (v3.device.y - v1.device.y);
-
-    float delta_y = 1.0f;
-
-    float delta_h_l = ceil(v0.device.y) - v0.device.y;
-    float delta_w_l = delta_h_l * dx_dy_l;
-    Vec2f cur_p_l (v0.device.x + delta_w_l, v0.device.y + delta_h_l);
-
-    float delta_h_r = ceil(v1.device.y) - v1.device.y;
-    float delta_w_r = delta_h_r * dx_dy_r;
-    Vec2f cur_p_r (v1.device.x + delta_w_r, v1.device.y + delta_h_r);
-
-    while (cur_p_l.y < v2.device.y) // March up sides of trapezoid
+    // [?] MAKE IT RIGHT
+    // [ ] MAKE IT CLEAN
+    // [ ] MAKE IT FAST
+ 
+    struct Endpoint
     {
-        int pixel_x = cur_p_l.x; // floor
-        int pixel_y = cur_p_l.y; // floor, but should already be integer (decimal part is all zeros)
-        int index = pixel_x + pixel_y * buffer->width;
+        float x_inc, y_inc, z_inc, r_inc, g_inc, b_inc;
+        float x, y, z, r, g, b;
+    };
 
-        while (pixel_x < cur_p_r.x) // March left to right across trapezoid
+    // *_inc is d*/dy, the derivitive (slope)
+    // expect for y_inc, which is the deltaY
+
+    Endpoint left;
+    left.x_inc = (v2.device.x - v0.device.x) / (v2.device.y - v0.device.y);
+    left.y_inc = 1.0f;
+    left.z_inc = (v2.depth - v0.depth) / (v2.device.y - v0.device.y);
+    left.r_inc = (v2.color.x - v0.color.x) / (v2.device.y - v0.device.y);
+    left.g_inc = (v2.color.y - v0.color.y) / (v2.device.y - v0.device.y);
+    left.b_inc = (v2.color.z - v0.color.z) / (v2.device.y - v0.device.y);
+
+    left.x = v0.device.x + (ceil(v0.device.y) - v0.device.y) * left.x_inc;
+    left.y = v0.device.y + (ceil(v0.device.y) - v0.device.y);
+    left.z = v0.depth   + (ceil(v0.device.y) - v0.device.y) * left.z_inc;
+    left.r = v0.color.x + (ceil(v0.device.y) - v0.device.y) * left.r_inc;
+    left.g = v0.color.y + (ceil(v0.device.y) - v0.device.y) * left.g_inc;
+    left.b = v0.color.z + (ceil(v0.device.y) - v0.device.y) * left.b_inc;
+
+    Endpoint right;
+    right.x_inc = (v3.device.x - v1.device.x) / (v3.device.y - v1.device.y);
+    right.y_inc = 1.0f;
+    right.z_inc = (v3.depth - v1.depth) / (v3.device.y - v1.device.y);
+    right.r_inc = (v3.color.x - v1.color.x) / (v3.device.y - v1.device.y);
+    right.g_inc = (v3.color.y - v1.color.y) / (v3.device.y - v1.device.y);
+    right.b_inc = (v3.color.z - v1.color.z) / (v3.device.y - v1.device.y);
+
+    right.x = v1.device.x + (ceil(v1.device.y) - v1.device.y) * right.x_inc;
+    right.y = v1.device.y + (ceil(v1.device.y) - v1.device.y);
+    right.z = v1.depth   + (ceil(v1.device.y) - v1.device.y) * right.z_inc;
+    right.r = v1.color.x + (ceil(v1.device.y) - v1.device.y) * right.r_inc;
+    right.g = v1.color.y + (ceil(v1.device.y) - v1.device.y) * right.g_inc;
+    right.b = v1.color.z + (ceil(v1.device.y) - v1.device.y) * right.b_inc;
+
+    assert(left.y  == floor(left.y));  // y should be at integer
+    assert(right.y == floor(right.y)); // y should be at integer
+
+    Endpoint scanline;
+    scanline.x_inc = 1.0f;
+    scanline.y_inc = 0.0f;
+
+    // Why? Triangles are sure fucking this up.
+    if (v3.device.x != v2.device.x)
+    {
+        scanline.z_inc = (v3.depth - v2.depth) / (v3.device.x - v2.device.x);
+        scanline.r_inc = (v3.color.x - v2.color.x) / (v3.device.x - v2.device.x);
+        scanline.g_inc = (v3.color.y - v2.color.y) / (v3.device.x - v2.device.x);
+        scanline.b_inc = (v3.color.z - v2.color.z) / (v3.device.x - v2.device.x);
+    }
+    else
+    {
+        scanline.z_inc = (v1.depth   - v0.depth)   / (v1.device.x - v0.device.x);
+        scanline.r_inc = (v1.color.x - v0.color.x) / (v1.device.x - v0.device.x);
+        scanline.g_inc = (v1.color.y - v0.color.y) / (v1.device.x - v0.device.x);
+        scanline.b_inc = (v1.color.z - v0.color.z) / (v1.device.x - v0.device.x);
+    }
+
+    while (left.y < top_scanline)
+    {
+        scanline.x = floor(left.x);
+        scanline.y = left.y;
+        scanline.z = left.z + (floor(left.x) - left.x) * scanline.z_inc;
+        scanline.r = left.r + (floor(left.x) - left.x) * scanline.r_inc;
+        scanline.g = left.g + (floor(left.x) - left.x) * scanline.g_inc;
+        scanline.b = left.b + (floor(left.x) - left.x) * scanline.b_inc;
+
+        int right_stop = floor(right.x);
+        while (scanline.x < right_stop) 
         {
-            buffer->pixels[index] = v0.color; // temporary, needs interpolation
+            Vec2i pixel (scanline.x, scanline.y);
+            Vec3f color = clampedVec3f(Vec3f(scanline.r, scanline.g, scanline.b), 0.0f, 1.0f);
+            set_pixel(pixel.x, pixel.y, color, buffer);
 
-            pixel_x++;
-            index++;
+            scanline.x += scanline.x_inc;
+            scanline.y += scanline.y_inc;
+            scanline.z += scanline.z_inc;
+            scanline.r += scanline.r_inc;
+            scanline.g += scanline.g_inc;
+            scanline.b += scanline.b_inc;
         }
 
-        cur_p_l.x += dx_dy_l;
-        cur_p_l.y += delta_y;
-        
-        cur_p_r.x += dx_dy_r;
-        cur_p_r.y += delta_y;
+        left.x += left.x_inc;
+        left.y += left.y_inc;
+        left.z += left.z_inc;
+        left.r += left.r_inc;
+        left.g += left.g_inc;
+        left.b += left.b_inc;
+
+        right.x += right.x_inc;
+        right.y += right.y_inc;
+        right.z += right.z_inc;
+        right.r += right.r_inc;
+        right.g += right.g_inc;
+        right.b += right.b_inc;
     }
 }
 
@@ -198,16 +275,24 @@ void cut_polygon(std::vector<Vertex>* polygon, float y, std::vector<Vertex>* top
             float dx = cur_dy * dx_dy;
             Vec2f interp_device_coord (cur.device.x + dx, y);
 
+            float dr_dy = (next.color.x - cur.color.x) / (next.device.y - cur.device.y);
+            float dg_dy = (next.color.y - cur.color.y) / (next.device.y - cur.device.y);
+            float db_dy = (next.color.z - cur.color.z) / (next.device.y - cur.device.y);
+
+            float dr = cur_dy * dr_dy;
+            float dg = cur_dy * dg_dy;
+            float db = cur_dy * db_dy;
+
             Vertex interpolated; 
             interpolated.device = interp_device_coord;
-            interpolated.color = cur.color; // temporary, needs interpolation
+            interpolated.color = Vec3f(cur.color.x + dr, cur.color.y + dg, cur.color.z + db);
+
+            // TODO: do interpolation for rest of values!
 
             top->push_back(interpolated);
             bottom->push_back(interpolated);
         }
     }
-
-    // return to_return;
 }
 
 void rasterize_triangle(Vertex v0, Vertex v1, Vertex v2, Buffer* buffer)
@@ -244,7 +329,7 @@ void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
     // IDEA: polygon is flat, and convex
     // IDEA: polygon must have some winding
 
-    // IDEA: switch to insertion sort 
+    // IDEA: switch to insertion sort (apparently its faster on smaller lists)
     std::vector<float> sorted_heights (vertices.size());
     for (int i = 0; i < sorted_heights.size(); i++) sorted_heights[i] = vertices[i].device.y;
     std::sort(sorted_heights.begin(), sorted_heights.end());
