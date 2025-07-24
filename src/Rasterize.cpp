@@ -159,136 +159,135 @@ void cut_polygon(std::vector<Vertex>* polygon, float y, std::vector<Vertex>* top
     }
 }
 
-void rasterize_triangle(Vertex v0, Vertex v1, Vertex v2, Buffer* buffer)
+void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
+// void rasterize_triangle(std::vector<Vertex> vertices, Buffer* buffer)
 {
-    Vertex apex_v, left_v, right_v;
+    /**
+     * PROCESS:
+     * 
+     * label triangle vertices
+     *      apex endpoint, left endpoint, right endpoint
+     * 
+     * set up left edge tracker
+     * set up right edge tracker
+     * 
+     * for each scanline triangle spans
+     *      set up current scanline
+     *      rasterize scanline from left to right
+     * 
+     *      take step forward on left edge tracker
+     *      take step forward on right edge tracker
+     */
+
+    // INPUT DATA SANITY CHECK: 3 vertex
+    // assert(vertices.size() == 3);
+
+    struct TriangleVertexLabels { Vertex *apex, *left, *right; } labels;
     if (v0.device.y == v1.device.y)
     {
-        apex_v = v2;
-
-        if (v0.device.x < v1.device.x)
-        {
-            left_v = v0;
-            right_v = v1;
-        }
-        else
-        {
-            left_v = v1;
-            right_v = v0;
-        }
+        labels.apex = &v2;
+        labels.left  = &v0;
+        labels.right = &v1;
     }
     else if (v0.device.y == v2.device.y)
     {
-        apex_v = v1;
-
-        if (v0.device.x < v2.device.x)
-        {
-            left_v = v0;
-            right_v = v2;
-        }
-        else
-        {
-            left_v = v2;
-            right_v = v0;
-        }
+        labels.apex = &v1;
+        labels.left  = &v0;
+        labels.right = &v2;
     }
-    else // v1.device.y == v2.device.y 
+    else
     {
-        apex_v = v0;
-
-        if (v1.device.x < v2.device.x)
-        {
-            left_v = v1;
-            right_v = v2;
-        }
-        else
-        {
-            left_v = v2;
-            right_v = v1;
-        }
+        labels.apex = &v0;
+        labels.left = &v1;
+        labels.right = &v2;
     }
+    if (labels.left->device.x > labels.right->device.x) std::swap(labels.left, labels.right);
 
-    // Flat bottom/top triangle, and non-colinear points
-    assert(left_v.device.y == right_v.device.y);
-    assert(apex_v.device.y != left_v.device.y);
+    // INPUT DATA SANITY CHECK: flat top/bottom triangle
+    assert(labels.left->device.y == labels.right->device.y);
 
-    int stop_scanline = apex_v.device.y > left_v.device.y ? ceil(apex_v.device.y) : ceil(left_v.device.y);
+    bool is_apex_above_other_vertices = labels.apex->device.y > labels.left->device.y;
 
-    struct Endpoint
+    struct EdgeTracker
     {
         float x_inc, y_inc, z_inc, r_inc, g_inc, b_inc;
         float x, y, z, r, g, b;
+        int x_int, y_int; // use instead of float x, y when known integer math
     };
 
     // *_inc is d*/dy, the derivitive (slope)
     // expect for y_inc, which is the deltaY
 
-    Endpoint left;
-    left.x_inc = (apex_v.device.x - left_v.device.x) / (apex_v.device.y - left_v.device.y);
+    float one_over_delta_y = 1.0f / (labels.apex->device.y - labels.left->device.y); // same for both edges (left.y == right.y)
+
+    EdgeTracker left;
     left.y_inc = 1.0f;
-    left.z_inc = (apex_v.depth   - left_v.depth)   / (apex_v.device.y - left_v.device.y);
-    left.r_inc = (apex_v.color.x - left_v.color.x) / (apex_v.device.y - left_v.device.y);
-    left.g_inc = (apex_v.color.y - left_v.color.y) / (apex_v.device.y - left_v.device.y);
-    left.b_inc = (apex_v.color.z - left_v.color.z) / (apex_v.device.y - left_v.device.y);
+    left.x_inc = (labels.apex->device.x - labels.left->device.x) * one_over_delta_y;
+    left.z_inc = (labels.apex->depth    - labels.left->depth   ) * one_over_delta_y;
+    left.r_inc = (labels.apex->color.x  - labels.left->color.x ) * one_over_delta_y;
+    left.g_inc = (labels.apex->color.y  - labels.left->color.y ) * one_over_delta_y;
+    left.b_inc = (labels.apex->color.z  - labels.left->color.z ) * one_over_delta_y;
 
-    if (apex_v.device.y < left_v.device.y)
-    {
-        left.x = apex_v.device.x + (ceil(apex_v.device.y) - apex_v.device.y) * left.x_inc;
-        left.y = apex_v.device.y + (ceil(apex_v.device.y) - apex_v.device.y);
-        left.z = apex_v.depth    + (ceil(apex_v.device.y) - apex_v.device.y) * left.z_inc;
-        left.r = apex_v.color.x  + (ceil(apex_v.device.y) - apex_v.device.y) * left.r_inc;
-        left.g = apex_v.color.y  + (ceil(apex_v.device.y) - apex_v.device.y) * left.g_inc;
-        left.b = apex_v.color.z  + (ceil(apex_v.device.y) - apex_v.device.y) * left.b_inc;
-    }
-    else
-    {
-        left.x = left_v.device.x + (ceil(left_v.device.y) - left_v.device.y) * left.x_inc;
-        left.y = left_v.device.y + (ceil(left_v.device.y) - left_v.device.y);
-        left.z = left_v.depth    + (ceil(left_v.device.y) - left_v.device.y) * left.z_inc;
-        left.r = left_v.color.x  + (ceil(left_v.device.y) - left_v.device.y) * left.r_inc;
-        left.g = left_v.color.y  + (ceil(left_v.device.y) - left_v.device.y) * left.g_inc;
-        left.b = left_v.color.z  + (ceil(left_v.device.y) - left_v.device.y) * left.b_inc;
-    }
-
-    Endpoint right;
-    right.x_inc = (apex_v.device.x - right_v.device.x) / (apex_v.device.y - right_v.device.y);
+    EdgeTracker right;
     right.y_inc = 1.0f;
-    right.z_inc = (apex_v.depth   - right_v.depth)   / (apex_v.device.y - right_v.device.y);
-    right.r_inc = (apex_v.color.x - right_v.color.x) / (apex_v.device.y - right_v.device.y);
-    right.g_inc = (apex_v.color.y - right_v.color.y) / (apex_v.device.y - right_v.device.y);
-    right.b_inc = (apex_v.color.z - right_v.color.z) / (apex_v.device.y - right_v.device.y);
+    right.x_inc = (labels.apex->device.x - labels.right->device.x) * one_over_delta_y;
+    right.z_inc = (labels.apex->depth    - labels.right->depth   ) * one_over_delta_y;
+    right.r_inc = (labels.apex->color.x  - labels.right->color.x ) * one_over_delta_y;
+    right.g_inc = (labels.apex->color.y  - labels.right->color.y ) * one_over_delta_y;
+    right.b_inc = (labels.apex->color.z  - labels.right->color.z ) * one_over_delta_y;
 
-    if (apex_v.device.y < right_v.device.y)
+
+    if (is_apex_above_other_vertices)
     {
-        right.x = apex_v.device.x + (ceil(apex_v.device.y) - apex_v.device.y) * right.x_inc;
-        right.y = apex_v.device.y + (ceil(apex_v.device.y) - apex_v.device.y);
-        right.z = apex_v.depth    + (ceil(apex_v.device.y) - apex_v.device.y) * right.z_inc;
-        right.r = apex_v.color.x  + (ceil(apex_v.device.y) - apex_v.device.y) * right.r_inc;
-        right.g = apex_v.color.y  + (ceil(apex_v.device.y) - apex_v.device.y) * right.g_inc;
-        right.b = apex_v.color.z  + (ceil(apex_v.device.y) - apex_v.device.y) * right.b_inc;
+        float delta_y = (ceil(labels.left->device.y) - labels.left->device.y); // same for both edges (left.y == right.y)
+
+        left.x = labels.left->device.x + (delta_y * left.x_inc);
+        left.y = labels.left->device.y + (delta_y             );
+        left.z = labels.left->depth    + (delta_y * left.z_inc);
+        left.r = labels.left->color.x  + (delta_y * left.r_inc);
+        left.g = labels.left->color.y  + (delta_y * left.g_inc);
+        left.b = labels.left->color.z  + (delta_y * left.b_inc);
+
+        right.x = labels.right->device.x + (delta_y * right.x_inc);
+        right.y = labels.right->device.y + (delta_y              );
+        right.z = labels.right->depth    + (delta_y * right.z_inc);
+        right.r = labels.right->color.x  + (delta_y * right.r_inc);
+        right.g = labels.right->color.y  + (delta_y * right.g_inc);
+        right.b = labels.right->color.z  + (delta_y * right.b_inc);
     }
     else
     {
-        right.x = right_v.device.x + (ceil(right_v.device.y) - right_v.device.y) * right.x_inc;
-        right.y = right_v.device.y + (ceil(right_v.device.y) - right_v.device.y);
-        right.z = right_v.depth    + (ceil(right_v.device.y) - right_v.device.y) * right.z_inc;
-        right.r = right_v.color.x  + (ceil(right_v.device.y) - right_v.device.y) * right.r_inc;
-        right.g = right_v.color.y  + (ceil(right_v.device.y) - right_v.device.y) * right.g_inc;
-        right.b = right_v.color.z  + (ceil(right_v.device.y) - right_v.device.y) * right.b_inc;
+        float delta_y = (ceil(labels.apex->device.y) - labels.apex->device.y);
+
+        left.x = labels.apex->device.x + (delta_y * left.x_inc);
+        left.y = labels.apex->device.y + (delta_y             );
+        left.z = labels.apex->depth    + (delta_y * left.z_inc);
+        left.r = labels.apex->color.x  + (delta_y * left.r_inc);
+        left.g = labels.apex->color.y  + (delta_y * left.g_inc);
+        left.b = labels.apex->color.z  + (delta_y * left.b_inc);
+
+        right.x = labels.apex->device.x + (delta_y * right.x_inc);
+        right.y = labels.apex->device.y + (delta_y              );
+        right.z = labels.apex->depth    + (delta_y * right.z_inc);
+        right.r = labels.apex->color.x  + (delta_y * right.r_inc);
+        right.g = labels.apex->color.y  + (delta_y * right.g_inc);
+        right.b = labels.apex->color.z  + (delta_y * right.b_inc);
     }
 
     assert(left.y  == floor(left.y));  // y should be at integer
     assert(right.y == floor(right.y)); // y should be at integer
 
-    Endpoint scanline;
+    float one_over_delta_x = 1.0f / (labels.right->device.x - labels.left->device.x);
+
+    EdgeTracker scanline;
     scanline.x_inc = 1.0f;
     scanline.y_inc = 0.0f;
+    scanline.z_inc = (labels.right->depth   - labels.left->depth  ) * one_over_delta_x;
+    scanline.r_inc = (labels.right->color.x - labels.left->color.x) * one_over_delta_x;
+    scanline.g_inc = (labels.right->color.y - labels.left->color.y) * one_over_delta_x;
+    scanline.b_inc = (labels.right->color.z - labels.left->color.z) * one_over_delta_x;
 
-    scanline.z_inc = (right_v.depth   - left_v.depth)   / (right_v.device.x - left_v.device.x);
-    scanline.r_inc = (right_v.color.x - left_v.color.x) / (right_v.device.x - left_v.device.x);
-    scanline.g_inc = (right_v.color.y - left_v.color.y) / (right_v.device.x - left_v.device.x);
-    scanline.b_inc = (right_v.color.z - left_v.color.z) / (right_v.device.x - left_v.device.x);
-
+    int stop_scanline = is_apex_above_other_vertices ? ceil(labels.apex->device.y) : ceil(labels.left->device.y);
     while (left.y < stop_scanline)
     {
         scanline.x = floor(left.x);
@@ -330,7 +329,7 @@ void rasterize_triangle(Vertex v0, Vertex v1, Vertex v2, Buffer* buffer)
 }
 
 // Trapezoid MUST have flat top & bottoms
-void rasterize_trapezoid(Vertex v0, Vertex v1, Vertex v2, Vertex v3, Buffer* buffer)
+void rasterize_trapezoid(Vertex& v0, Vertex& v1, Vertex& v2, Vertex& v3, Buffer* buffer)
 {  
     // IDEA: I think its safe to assume culling for backfaceing traps has already occurred
     // IDEA: raster policy: don't rasterize at or past top edge

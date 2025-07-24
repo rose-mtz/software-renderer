@@ -55,7 +55,7 @@ void init()
 
     init_window(640, 480);    
     resize_buffer(screen_res_buffer, 640, 480);
-    resize_buffer(low_res_buffer, 320, 240);
+    resize_buffer(low_res_buffer, 640, 480);
 }
 
 void handle_time()
@@ -144,7 +144,7 @@ void handle_events()
     }
 }
 
-void draw()
+void draw() // TODO: pass in buffer to render into so that I can skip low res buffer if its size is equal to screen buffer
 {
     clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), screen_res_buffer);
     clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), low_res_buffer);
@@ -161,19 +161,19 @@ void draw()
             rasterize_polygon(poly, low_res_buffer);
         }
 
-        // if (poly.size() > 1)
-        // {
-        //     for (int j = 0; j < poly.size(); j++)
-        //     {
-        //         Vertex start = poly[j];
-        //         Vertex end = poly[(j + 1) % poly.size()];
+        if (poly.size() > 1)
+        {
+            for (int j = 0; j < poly.size(); j++)
+            {
+                Vertex start = poly[j];
+                Vertex end = poly[(j + 1) % poly.size()];
 
-        //         start.color = LINE_COLOR;
-        //         end.color = LINE_COLOR;
+                start.color = LINE_COLOR;
+                end.color = LINE_COLOR;
 
-        //         rasterize_line(start, end, 2, low_res_buffer);
-        //     }
-        // }
+                rasterize_line(start, end, 2, low_res_buffer);
+            }
+        }
 
         for (int j = 0; j < poly.size(); j++)
         {
