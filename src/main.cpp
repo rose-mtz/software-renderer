@@ -161,24 +161,24 @@ void draw()
             rasterize_polygon(poly, low_res_buffer);
         }
 
-        if (poly.size() > 1)
-        {
-            for (int j = 0; j < poly.size(); j++)
-            {
-                Vertex start = poly[j];
-                Vertex end = poly[(j + 1) % poly.size()];
+        // if (poly.size() > 1)
+        // {
+        //     for (int j = 0; j < poly.size(); j++)
+        //     {
+        //         Vertex start = poly[j];
+        //         Vertex end = poly[(j + 1) % poly.size()];
 
-                start.color = LINE_COLOR;
-                end.color = LINE_COLOR;
+        //         start.color = LINE_COLOR;
+        //         end.color = LINE_COLOR;
 
-                rasterize_line(start, end, 2, low_res_buffer);
-            }
-        }
+        //         rasterize_line(start, end, 2, low_res_buffer);
+        //     }
+        // }
 
         for (int j = 0; j < poly.size(); j++)
         {
             Vertex v = poly[j];
-            v.color = POINT_COLOR;
+            // v.color = POINT_COLOR;
             int POINT_SIZE = 4;
             
             rasterize_point(v, POINT_SIZE, low_res_buffer);
