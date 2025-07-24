@@ -160,7 +160,6 @@ void cut_polygon(std::vector<Vertex>* polygon, float y, std::vector<Vertex>* top
 }
 
 void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
-// void rasterize_triangle(std::vector<Vertex> vertices, Buffer* buffer)
 {
     /**
      * PROCESS:
@@ -179,8 +178,6 @@ void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
      *      take step forward on right edge tracker
      */
 
-    // INPUT DATA SANITY CHECK: 3 vertex
-    // assert(vertices.size() == 3);
 
     struct TriangleVertexLabels { Vertex *apex, *left, *right; } labels;
     if (v0.device.y == v1.device.y)
@@ -206,8 +203,6 @@ void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
     // INPUT DATA SANITY CHECK: flat top/bottom triangle
     assert(labels.left->device.y == labels.right->device.y);
 
-    bool is_apex_above_other_vertices = labels.apex->device.y > labels.left->device.y;
-
     struct EdgeTracker
     {
         float x_inc, y_inc, z_inc, r_inc, g_inc, b_inc;
@@ -215,97 +210,70 @@ void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
         int x_int, y_int; // use instead of float x, y when known integer math
     };
 
-    // *_inc is d*/dy, the derivitive (slope)
-    // expect for y_inc, which is the deltaY
-
-    float one_over_delta_y = 1.0f / (labels.apex->device.y - labels.left->device.y); // same for both edges (left.y == right.y)
-
+    float one_over_delta_y = 1.0f / (labels.apex->device.y - labels.left->device.y); // same for both edges
     EdgeTracker left;
-    left.y_inc = 1.0f;
     left.x_inc = (labels.apex->device.x - labels.left->device.x) * one_over_delta_y;
     left.z_inc = (labels.apex->depth    - labels.left->depth   ) * one_over_delta_y;
     left.r_inc = (labels.apex->color.x  - labels.left->color.x ) * one_over_delta_y;
     left.g_inc = (labels.apex->color.y  - labels.left->color.y ) * one_over_delta_y;
     left.b_inc = (labels.apex->color.z  - labels.left->color.z ) * one_over_delta_y;
-
     EdgeTracker right;
-    right.y_inc = 1.0f;
     right.x_inc = (labels.apex->device.x - labels.right->device.x) * one_over_delta_y;
-    right.z_inc = (labels.apex->depth    - labels.right->depth   ) * one_over_delta_y;
-    right.r_inc = (labels.apex->color.x  - labels.right->color.x ) * one_over_delta_y;
-    right.g_inc = (labels.apex->color.y  - labels.right->color.y ) * one_over_delta_y;
-    right.b_inc = (labels.apex->color.z  - labels.right->color.z ) * one_over_delta_y;
 
-
+    int start_scanline;
+    bool is_apex_above_other_vertices = labels.apex->device.y > labels.left->device.y;
     if (is_apex_above_other_vertices)
     {
-        float delta_y = (ceil(labels.left->device.y) - labels.left->device.y); // same for both edges (left.y == right.y)
-
-        left.x = labels.left->device.x + (delta_y * left.x_inc);
-        left.y = labels.left->device.y + (delta_y             );
-        left.z = labels.left->depth    + (delta_y * left.z_inc);
-        left.r = labels.left->color.x  + (delta_y * left.r_inc);
-        left.g = labels.left->color.y  + (delta_y * left.g_inc);
-        left.b = labels.left->color.z  + (delta_y * left.b_inc);
-
-        right.x = labels.right->device.x + (delta_y * right.x_inc);
-        right.y = labels.right->device.y + (delta_y              );
-        right.z = labels.right->depth    + (delta_y * right.z_inc);
-        right.r = labels.right->color.x  + (delta_y * right.r_inc);
-        right.g = labels.right->color.y  + (delta_y * right.g_inc);
-        right.b = labels.right->color.z  + (delta_y * right.b_inc);
+        float delta_y  = (ceil(labels.left->device.y) - labels.left->device.y); // same for both edges
+        left.x         = labels.left->device.x + (delta_y * left.x_inc);
+        left.z         = labels.left->depth    + (delta_y * left.z_inc);
+        left.r         = labels.left->color.x  + (delta_y * left.r_inc);
+        left.g         = labels.left->color.y  + (delta_y * left.g_inc);
+        left.b         = labels.left->color.z  + (delta_y * left.b_inc);
+        right.x        = labels.right->device.x + (delta_y * right.x_inc);
+        start_scanline = ceil(labels.left->device.y);
     }
     else
     {
-        float delta_y = (ceil(labels.apex->device.y) - labels.apex->device.y);
-
-        left.x = labels.apex->device.x + (delta_y * left.x_inc);
-        left.y = labels.apex->device.y + (delta_y             );
-        left.z = labels.apex->depth    + (delta_y * left.z_inc);
-        left.r = labels.apex->color.x  + (delta_y * left.r_inc);
-        left.g = labels.apex->color.y  + (delta_y * left.g_inc);
-        left.b = labels.apex->color.z  + (delta_y * left.b_inc);
-
-        right.x = labels.apex->device.x + (delta_y * right.x_inc);
-        right.y = labels.apex->device.y + (delta_y              );
-        right.z = labels.apex->depth    + (delta_y * right.z_inc);
-        right.r = labels.apex->color.x  + (delta_y * right.r_inc);
-        right.g = labels.apex->color.y  + (delta_y * right.g_inc);
-        right.b = labels.apex->color.z  + (delta_y * right.b_inc);
+        float delta_y  = (ceil(labels.apex->device.y) - labels.apex->device.y);
+        left.x         = labels.apex->device.x + (delta_y * left.x_inc);
+        left.z         = labels.apex->depth    + (delta_y * left.z_inc);
+        left.r         = labels.apex->color.x  + (delta_y * left.r_inc);
+        left.g         = labels.apex->color.y  + (delta_y * left.g_inc);
+        left.b         = labels.apex->color.z  + (delta_y * left.b_inc);
+        right.x        = labels.apex->device.x + (delta_y * right.x_inc);
+        start_scanline = ceil(labels.apex->device.y);
     }
+    left.y_int  = start_scanline;
+    right.y_int = start_scanline;
 
     assert(left.y  == floor(left.y));  // y should be at integer
     assert(right.y == floor(right.y)); // y should be at integer
 
     float one_over_delta_x = 1.0f / (labels.right->device.x - labels.left->device.x);
-
     EdgeTracker scanline;
-    scanline.x_inc = 1.0f;
-    scanline.y_inc = 0.0f;
     scanline.z_inc = (labels.right->depth   - labels.left->depth  ) * one_over_delta_x;
     scanline.r_inc = (labels.right->color.x - labels.left->color.x) * one_over_delta_x;
     scanline.g_inc = (labels.right->color.y - labels.left->color.y) * one_over_delta_x;
     scanline.b_inc = (labels.right->color.z - labels.left->color.z) * one_over_delta_x;
 
     int stop_scanline = is_apex_above_other_vertices ? ceil(labels.apex->device.y) : ceil(labels.left->device.y);
-    while (left.y < stop_scanline)
+    while (left.y_int < stop_scanline)
     {
-        scanline.x = floor(left.x);
-        scanline.y = left.y;
-        scanline.z = left.z + (floor(left.x) - left.x) * scanline.z_inc;
-        scanline.r = left.r + (floor(left.x) - left.x) * scanline.r_inc;
-        scanline.g = left.g + (floor(left.x) - left.x) * scanline.g_inc;
-        scanline.b = left.b + (floor(left.x) - left.x) * scanline.b_inc;
+        float delta_x = (floor(left.x) - left.x);
+        scanline.x_int = floor(left.x);
+        scanline.y_int = left.y_int;
+        scanline.z = left.z + delta_x * scanline.z_inc;
+        scanline.r = left.r + delta_x * scanline.r_inc;
+        scanline.g = left.g + delta_x * scanline.g_inc;
+        scanline.b = left.b + delta_x * scanline.b_inc;
 
         int right_stop = floor(right.x);
-        while (scanline.x < right_stop) 
+        while (scanline.x_int < right_stop)
         {
-            Vec2i pixel (scanline.x, scanline.y);
-            Vec3f color = clampedVec3f(Vec3f(scanline.r, scanline.g, scanline.b), 0.0f, 1.0f);
-            set_pixel(pixel.x, pixel.y, color, buffer);
+            set_pixel(scanline.x_int, scanline.y_int, clampedVec3f(Vec3f(scanline.r, scanline.g, scanline.b), 0.0f, 1.0f), buffer);
 
-            scanline.x += scanline.x_inc;
-            scanline.y += scanline.y_inc;
+            scanline.x_int++;
             scanline.z += scanline.z_inc;
             scanline.r += scanline.r_inc;
             scanline.g += scanline.g_inc;
@@ -313,18 +281,14 @@ void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
         }
 
         left.x += left.x_inc;
-        left.y += left.y_inc;
+        left.y_int++;
         left.z += left.z_inc;
         left.r += left.r_inc;
         left.g += left.g_inc;
         left.b += left.b_inc;
 
         right.x += right.x_inc;
-        right.y += right.y_inc;
-        right.z += right.z_inc;
-        right.r += right.r_inc;
-        right.g += right.g_inc;
-        right.b += right.b_inc;
+        right.y_int++;
     }
 }
 

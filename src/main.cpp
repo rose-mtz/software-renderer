@@ -55,7 +55,7 @@ void init()
 
     init_window(640, 480);    
     resize_buffer(screen_res_buffer, 640, 480);
-    resize_buffer(low_res_buffer, 640, 480);
+    resize_buffer(low_res_buffer, 160, 120);
 }
 
 void handle_time()
@@ -144,11 +144,8 @@ void handle_events()
     }
 }
 
-void draw() // TODO: pass in buffer to render into so that I can skip low res buffer if its size is equal to screen buffer
+void render_scene(Buffer* frame_buffer)
 {
-    clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), screen_res_buffer);
-    clear_buffer(Vec3f(0.0f, 0.0f, 0.0f), low_res_buffer);
-
     Vec3f POINT_COLOR (0.0f, 1.0f, 0.0f);
     Vec3f LINE_COLOR  (1.0f, 0.0f, 0.0f);
 
@@ -158,7 +155,7 @@ void draw() // TODO: pass in buffer to render into so that I can skip low res bu
 
         if (poly.size() > 2)
         {
-            rasterize_polygon(poly, low_res_buffer);
+            rasterize_polygon(poly, frame_buffer);
         }
 
         if (poly.size() > 1)
@@ -171,21 +168,38 @@ void draw() // TODO: pass in buffer to render into so that I can skip low res bu
                 start.color = LINE_COLOR;
                 end.color = LINE_COLOR;
 
-                rasterize_line(start, end, 2, low_res_buffer);
+                rasterize_line(start, end, 2, frame_buffer);
             }
         }
 
         for (int j = 0; j < poly.size(); j++)
         {
             Vertex v = poly[j];
-            // v.color = POINT_COLOR;
             int POINT_SIZE = 4;
             
-            rasterize_point(v, POINT_SIZE, low_res_buffer);
+            rasterize_point(v, POINT_SIZE, frame_buffer);
         }
     }
+}
 
-    blit_buffer(low_res_buffer, screen_res_buffer);
+
+void draw()
+{
+    Vec3f CLEAR_COLOR (0.0f, 0.0f, 0.0f);
+
+    if ((low_res_buffer->width == screen_res_buffer->width) && (low_res_buffer->height == screen_res_buffer->height))
+    {
+        clear_buffer(CLEAR_COLOR, screen_res_buffer);
+        render_scene(screen_res_buffer);
+    }
+    else
+    {
+        clear_buffer(CLEAR_COLOR, screen_res_buffer);
+        clear_buffer(CLEAR_COLOR, low_res_buffer);
+        render_scene(low_res_buffer);
+        blit_buffer(low_res_buffer, screen_res_buffer);
+    }
+
     blit_window(screen_res_buffer->pixels);
 }
 
