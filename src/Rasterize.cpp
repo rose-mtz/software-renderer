@@ -3,7 +3,7 @@
 #include <cassert>
 
 
-void rasterize_point(Vertex v, int radius, Buffer* buffer)
+void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 {
     // KNOWN ISSUE: 
     //      for small radius sizes (<5), the pixels may appear not so square, not circular
@@ -59,7 +59,7 @@ void rasterize_point(Vertex v, int radius, Buffer* buffer)
     }
 }
 
-void rasterize_line(Vertex v0, Vertex v1, int width, Buffer* buffer)
+void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffer)
 {
     Vec2f p0 = v0.device;
     Vec2f p1 = v1.device;
@@ -109,26 +109,26 @@ void rasterize_line(Vertex v0, Vertex v1, int width, Buffer* buffer)
 
 // Cuts a polygon into two pieces
 // Cut is horizontal and is at y
-void cut_polygon(std::vector<Vertex>* polygon, float y, std::vector<Vertex>* top, std::vector<Vertex>* bottom)
+void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex>& top, std::vector<Vertex>& bottom)
 {
     // IDEA: polygon MUST have some winding
 
-    for (int i = 0; i < polygon->size(); i++)
+    for (int i = 0; i < polygon.size(); i++)
     {
-        Vertex cur = polygon->at(i);
+        const Vertex& cur = polygon[i];
         float cur_dy = y - cur.device.y;
 
         // Add current vertex to its respective list(s)
         if (cur_dy >= 0.0f)
         {
-            bottom->push_back(cur);
+            bottom.push_back(cur);
         }
         if (cur_dy <= 0.0f)
         {
-            top->push_back(cur);
+            top.push_back(cur);
         }
 
-        Vertex next = polygon->at((i + 1) % polygon->size());
+        const Vertex& next = polygon[(i + 1) % polygon.size()];
         float next_dy = y - next.device.y;
 
         // Check if we cross cut line on way to next vertex
@@ -153,13 +153,13 @@ void cut_polygon(std::vector<Vertex>* polygon, float y, std::vector<Vertex>* top
 
             // TODO: do interpolation for rest of values!
 
-            top->push_back(interpolated);
-            bottom->push_back(interpolated);
+            top.push_back(interpolated);
+            bottom.push_back(interpolated);
         }
     }
 }
 
-void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
+void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Buffer* buffer)
 {
     /**
      * PROCESS:
@@ -179,7 +179,7 @@ void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
      */
 
 
-    struct TriangleVertexLabels { Vertex *apex, *left, *right; } labels;
+    struct TriangleVertexLabels { const Vertex *apex, *left, *right; } labels;
     if (v0.device.y == v1.device.y)
     {
         labels.apex = &v2;
@@ -293,7 +293,7 @@ void rasterize_triangle(Vertex& v0, Vertex& v1, Vertex& v2, Buffer* buffer)
 }
 
 // Trapezoid MUST have flat top & bottoms
-void rasterize_trapezoid(Vertex& v0, Vertex& v1, Vertex& v2, Vertex& v3, Buffer* buffer)
+void rasterize_trapezoid(const Vertex& v0, const Vertex& v1, const Vertex& v2, const Vertex& v3, Buffer* buffer)
 {  
     // IDEA: I think its safe to assume culling for backfaceing traps has already occurred
     // IDEA: raster policy: don't rasterize at or past top edge
@@ -306,12 +306,12 @@ void rasterize_trapezoid(Vertex& v0, Vertex& v1, Vertex& v2, Vertex& v3, Buffer*
 void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
 {
     // Allocate vectors once
-    static std::vector<Vertex>* cur_polygon = new std::vector<Vertex>(15);
-    static std::vector<Vertex>* top = new std::vector<Vertex>(15);
-    static std::vector<Vertex>* bottom = new std::vector<Vertex>(15);
-    cur_polygon->clear();
-    top->clear();
-    bottom->clear();
+    static std::vector<Vertex> cur_polygon (15);
+    static std::vector<Vertex> top (15);
+    static std::vector<Vertex> bottom (15);
+    cur_polygon.clear();
+    top.clear();
+    bottom.clear();
 
     // Process: cut polygon into rasterize-able triangle or trapezoid
     // IDEA: polygon is flat, and convex
@@ -322,24 +322,24 @@ void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
     for (int i = 0; i < sorted_heights.size(); i++) sorted_heights[i] = vertices[i].device.y;
     std::sort(sorted_heights.begin(), sorted_heights.end());
 
-    for (int i = 0; i < vertices.size(); i++) cur_polygon->push_back(vertices[i]);
+    for (int i = 0; i < vertices.size(); i++) cur_polygon.push_back(vertices[i]);
 
     for (int i = 0; i < sorted_heights.size(); i++)
     {
         cut_polygon(cur_polygon, sorted_heights[i], top, bottom);
 
         // Rasterize bottom piece
-        if (bottom->size() == 4)
+        if (bottom.size() == 4)
         {
-            rasterize_trapezoid(bottom->at(0), bottom->at(1), bottom->at(2), bottom->at(3), buffer);
+            rasterize_trapezoid(bottom[0], bottom[1], bottom[2], bottom[3], buffer);
         }
-        else if (bottom->size() == 3)
+        else if (bottom.size() == 3)
         {
-            rasterize_triangle(bottom->at(0), bottom->at(1), bottom->at(2), buffer);
+            rasterize_triangle(bottom[0], bottom[1], bottom[2], buffer);
         }
 
         std::swap(cur_polygon, top);
-        top->clear();
-        bottom->clear();
+        top.clear();
+        bottom.clear();
     }
 }

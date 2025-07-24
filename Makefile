@@ -9,6 +9,7 @@ DEV_BUILD = ./bin/dev_build.exe
 PROD_FLAGS = -O2 -DNDEBUG
 PROD_BUILD = ./bin/prod_build.exe
 
+all : dev prod
 
 dev : $(DEV_BUILD)
 

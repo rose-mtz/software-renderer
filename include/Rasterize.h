@@ -10,6 +10,6 @@ struct Vertex
     Vec3f color;
 };
 
-void rasterize_point(Vertex v, int width, Buffer* buffer);
-void rasterize_line(Vertex v0, Vertex v1, int width, Buffer* buffer);
+void rasterize_point(const Vertex& v, int width, Buffer* buffer);
+void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffer);
 void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer);
