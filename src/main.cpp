@@ -155,18 +155,18 @@ void render_scene(Buffer* frame_buffer)
 
         if (poly.size() > 2)
         {
-            rasterize_polygon(poly, frame_buffer);
+            // rasterize_polygon(poly, frame_buffer);
         }
 
         if (poly.size() > 1)
         {
             for (int j = 0; j < poly.size(); j++)
             {
-                Vertex start = poly[j];
-                Vertex end = poly[(j + 1) % poly.size()];
+                const Vertex& start = poly[j];
+                const Vertex& end = poly[(j + 1) % poly.size()];
 
-                start.color = LINE_COLOR;
-                end.color = LINE_COLOR;
+                // start.color = LINE_COLOR;
+                // end.color = LINE_COLOR;
 
                 rasterize_line(start, end, 2, frame_buffer);
             }

@@ -3,6 +3,9 @@
 #include <cassert>
 
 
+
+// TODO: should move out-of-bounds pixel set check inside to point, and line, since triangle doesn't need it
+
 void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 {
     // KNOWN ISSUE: 
@@ -61,49 +64,72 @@ void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 
 void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffer)
 {
-    Vec2f p0 = v0.device;
-    Vec2f p1 = v1.device;
-    float slope = (p1.y - p0.y) / (p1.x - p0.x);
+    struct Endpoint
+    {
+        const Vertex *vert;
+        Vec2f point;
+    } start, end;
+    start = { &v0, v0.device };
+    end = { &v1, v1.device };
 
-    bool inverted_axis = slope > 1.0f || slope < -1.0f;
+    float slope = (end.point.y - start.point.y) / (end.point.x - start.point.x);
+
+    bool inverted_axis = (slope > 1.0f || slope < -1.0f);
     if (inverted_axis)
     {
         slope = 1.0f/slope;
-
-        // Swap x and y
-        float temp = p0.x;
-        p0.x = p0.y;
-        p0.y = temp;
-        temp = p1.x;
-        p1.x = p1.y;
-        p1.y = temp;
+        std::swap(start.point.x, start.point.y);
+        std::swap(end.point.x, end.point.y);
     }
+    if (start.point.x > end.point.x) std::swap(start, end);
 
-    if (p0.x > p1.x) std::swap(p0, p1); // march in positive x direction (from p0 to p1)
+    struct InterpolationTracker 
+    {  
+        float r,g,b;
+        float r_inc, g_inc, b_inc;
+    } interp_tracker;
 
-    float dy = slope; // dy = slope * dx = slope * 1 = slope
-    float y = p0.y;
+    interp_tracker.r = start.vert->color.x;
+    interp_tracker.g = start.vert->color.y;
+    interp_tracker.b = start.vert->color.z;
 
-    int col = floor(p0.x);
-    int col_stop = ceil(p1.x);
-    while (col < col_stop)
+    // NOT SURE ABOUT THIS
+    interp_tracker.r_inc = (end.vert->color.x - start.vert->color.x) / (end.point.x - start.point.x);
+    interp_tracker.g_inc = (end.vert->color.y - start.vert->color.y) / (end.point.x - start.point.x);
+    interp_tracker.b_inc = (end.vert->color.z - start.vert->color.z) / (end.point.x - start.point.x);
+
+    // dy = slope, dx = 1
+
+    int   x = floor(start.point.x);
+    float y = start.point.y;
+
+    int stop = ceil(end.point.x);
+    int line_count = 1 + ((width - 1) * 2);
+    while (x < stop)
     {
-        int row = floor(y);
+        int y_floor = floor(y);
 
-        // Line thickness
-        int line_count = 1 + ((width - 1) * 2);
-        int cur_line = 0;
-        while (cur_line < line_count)
+        // Thickness
+        for (int i = 0; i < line_count; i++)
         {
-            int current_line_row = (row - (width - 1)) + cur_line;
-            if (inverted_axis) set_pixel(current_line_row, col, v0.color, buffer);
-            else set_pixel(col, current_line_row, v0.color, buffer);
+            int shift = i + (1 - width);
 
-            cur_line++;
+            if (inverted_axis) 
+            {
+                set_pixel(shift + y_floor, x, clampedVec3f(Vec3f(interp_tracker.r, interp_tracker.g, interp_tracker.b), 0.0f, 1.0f), buffer);
+            }
+            else 
+            {
+                set_pixel(x, shift + y_floor, clampedVec3f(Vec3f(interp_tracker.r, interp_tracker.g, interp_tracker.b), 0.0f, 1.0f), buffer);
+            }
         }
 
-        y += dy;
-        col++;
+        interp_tracker.r += interp_tracker.r_inc;
+        interp_tracker.g += interp_tracker.g_inc;
+        interp_tracker.b += interp_tracker.b_inc;
+
+        x++;
+        y += slope;
     }
 }
 
@@ -180,24 +206,11 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 
 
     struct TriangleVertexLabels { const Vertex *apex, *left, *right; } labels;
-    if (v0.device.y == v1.device.y)
-    {
-        labels.apex = &v2;
-        labels.left  = &v0;
-        labels.right = &v1;
-    }
-    else if (v0.device.y == v2.device.y)
-    {
-        labels.apex = &v1;
-        labels.left  = &v0;
-        labels.right = &v2;
-    }
-    else
-    {
-        labels.apex = &v0;
-        labels.left = &v1;
-        labels.right = &v2;
-    }
+    // Set the apex
+    if      (v0.device.y == v1.device.y) labels = { &v2, &v0, &v1 };
+    else if (v0.device.y == v2.device.y) labels = { &v1, &v0, &v2 };
+    else                                 labels = { &v0, &v1, &v2 };
+    // Swap left right to correct order
     if (labels.left->device.x > labels.right->device.x) std::swap(labels.left, labels.right);
 
     // INPUT DATA SANITY CHECK: flat top/bottom triangle
