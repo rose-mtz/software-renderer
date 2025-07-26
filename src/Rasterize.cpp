@@ -68,68 +68,72 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
     {
         const Vertex *vert;
         Vec2f point;
-    } start, end;
-    start = { &v0, v0.device };
-    end = { &v1, v1.device };
+    };
+    Endpoint start = { &v0, v0.device };
+    Endpoint end   = { &v1, v1.device };
 
-    float slope = (end.point.y - start.point.y) / (end.point.x - start.point.x);
-
-    bool inverted_axis = (slope > 1.0f || slope < -1.0f);
-    if (inverted_axis)
+    float slope;
+    bool steep_slope = (fabs(end.point.y - start.point.y) > fabs(end.point.x - start.point.x));
+    if (steep_slope)
     {
-        slope = 1.0f/slope;
+        // For steep slope cases, invert the axis (swap x and y)
+        assert((end.point.y - start.point.y) != 0.0f);
+        slope = (end.point.x - start.point.x) / (end.point.y - start.point.y);
         std::swap(start.point.x, start.point.y);
         std::swap(end.point.x, end.point.y);
     }
+    else
+    {
+        assert((end.point.x - start.point.x) != 0.0f);
+        slope =  (end.point.y - start.point.y) / (end.point.x - start.point.x);
+    }
+
+    // March line in increasing x-direction
     if (start.point.x > end.point.x) std::swap(start, end);
 
-    struct InterpolationTracker 
+    struct EdgeTracker 
     {  
-        float r,g,b;
-        float r_inc, g_inc, b_inc;
-    } interp_tracker;
+        int x;
+        float r, g, b, y;
+        float r_inc, g_inc, b_inc, y_inc;
+    } edge;
+    edge.x = start.point.x;
+    edge.y = start.point.y;
+    edge.r = start.vert->color.x;
+    edge.g = start.vert->color.y;
+    edge.b = start.vert->color.z;
+    assert((end.point.x - start.point.x) != 0.0f);
+    edge.r_inc = (end.vert->color.x - start.vert->color.x) / (end.point.x - start.point.x);
+    edge.g_inc = (end.vert->color.y - start.vert->color.y) / (end.point.x - start.point.x);
+    edge.b_inc = (end.vert->color.z - start.vert->color.z) / (end.point.x - start.point.x);
+    edge.y_inc = slope;
 
-    interp_tracker.r = start.vert->color.x;
-    interp_tracker.g = start.vert->color.y;
-    interp_tracker.b = start.vert->color.z;
+    int final_column = ceil(end.point.x);
+    int line_thickness = 1 + ((width - 1) * 2);
 
-    // NOT SURE ABOUT THIS
-    interp_tracker.r_inc = (end.vert->color.x - start.vert->color.x) / (end.point.x - start.point.x);
-    interp_tracker.g_inc = (end.vert->color.y - start.vert->color.y) / (end.point.x - start.point.x);
-    interp_tracker.b_inc = (end.vert->color.z - start.vert->color.z) / (end.point.x - start.point.x);
-
-    // dy = slope, dx = 1
-
-    int   x = floor(start.point.x);
-    float y = start.point.y;
-
-    int stop = ceil(end.point.x);
-    int line_count = 1 + ((width - 1) * 2);
-    while (x < stop)
+    while (edge.x < final_column)
     {
-        int y_floor = floor(y);
+        int scanline = floor(edge.y);
 
-        // Thickness
-        for (int i = 0; i < line_count; i++)
+        for (int i = 0; i < line_thickness; i++)
         {
             int shift = i + (1 - width);
 
-            if (inverted_axis) 
+            if (steep_slope) 
             {
-                set_pixel(shift + y_floor, x, clampedVec3f(Vec3f(interp_tracker.r, interp_tracker.g, interp_tracker.b), 0.0f, 1.0f), buffer);
+                set_pixel(shift + scanline, edge.x, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
             }
             else 
             {
-                set_pixel(x, shift + y_floor, clampedVec3f(Vec3f(interp_tracker.r, interp_tracker.g, interp_tracker.b), 0.0f, 1.0f), buffer);
+                set_pixel(edge.x, shift + scanline, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
             }
         }
 
-        interp_tracker.r += interp_tracker.r_inc;
-        interp_tracker.g += interp_tracker.g_inc;
-        interp_tracker.b += interp_tracker.b_inc;
-
-        x++;
-        y += slope;
+        edge.r += edge.r_inc;
+        edge.g += edge.g_inc;
+        edge.b += edge.b_inc;
+        edge.x++;
+        edge.y += edge.y_inc;
     }
 }
 
