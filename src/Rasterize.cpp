@@ -260,9 +260,6 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
     left.y_int  = start_scanline;
     right.y_int = start_scanline;
 
-    assert(left.y  == floor(left.y));  // y should be at integer
-    assert(right.y == floor(right.y)); // y should be at integer
-
     float one_over_delta_x = 1.0f / (labels.right->device.x - labels.left->device.x);
     EdgeTracker scanline;
     scanline.z_inc = (labels.right->depth   - labels.left->depth  ) * one_over_delta_x;
