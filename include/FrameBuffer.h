@@ -8,7 +8,8 @@ struct Buffer
 };
 
 
-bool  set_pixel(int x, int y, Vec3f value, Buffer* buffer);
+bool  is_out_of_bounds(int x, int y, Buffer* buffer);
+void  set_pixel(int x, int y, Vec3f value, Buffer* buffer);
 Vec3f get_pixel(int x, int y, Buffer* buffer);
 void  clear_buffer(Vec3f color, Buffer* buffer);
 void  resize_buffer(Buffer* buffer, int width, int height);

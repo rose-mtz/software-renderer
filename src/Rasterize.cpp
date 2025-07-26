@@ -3,59 +3,50 @@
 #include <cassert>
 
 
-
-// TODO: should move out-of-bounds pixel set check inside to point, and line, since triangle doesn't need it
-
 void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 {
-    // KNOWN ISSUE: 
-    //      for small radius sizes (<5), the pixels may appear not so square, not circular
-    //      for larger radiuses this is not a problem
-    // PROPOSED SOLUTION: 
-    //      try centering center of circle at center instead of at integer points
-    //      or add aa
-
     /**
-     * Process:
+     * PROCESS:
      * 
-     * round vertex pos to nearest integer point
+     * for each scanline circle spans
+     *      calculate scanline-circle interceptions
+     *      rasterize between interception points
      * 
-     * from bottom scanline to top scanline that circle spans
-     *     find x intercepts points at current scanline w/ circle
-     *     using current scanline and its x intercepts, rasterize the scanline
+     * ISSUES:
+     * 
+     * Big points span many scanlines, but small points span 
+     * only a few scanlines. The problem with this is that the number of scanlines determines 
+     * how many times scanline-circle interceptions are calculated. The more interceptions calculated 
+     * the more the rasterized point will look like a circle, but the less the more blocky it will look. 
      */
 
+    float radius_squared = radius*radius;
     Vec2i center (round(v.device.x), round(v.device.y));
-
     int stop_scanline = center.y + radius;
-    int cur_scanline = center.y - radius;
+    int start_scanline = center.y - radius;
 
+    int cur_scanline = start_scanline;
     while (cur_scanline < stop_scanline)
     {
         int y_intercept = cur_scanline;
-        if (cur_scanline < center.y) 
-        {
-            // for bottom part of circle, we use scanline above current to sample circle intercepts
-            y_intercept++; 
-        }
+        // for bottom part of circle, we use scanline above current to sample circle intercepts
+        if (cur_scanline < center.y) y_intercept++; 
 
         // Relative to circle center (essential move circle to origin)
-        int y_rel = y_intercept - center.y;
-        // Intercept y_rel with circle centered at origin
-        float x_right_rel = sqrt(radius*radius - y_rel*y_rel);
-        float x_left_rel = -x_right_rel;
+        int   y_intercept_relative     = y_intercept - center.y;
+        float right_intercept_relative = sqrt(radius_squared - y_intercept_relative*y_intercept_relative);
+        float left_intercept_relative  = -right_intercept_relative;
         // Translates intercepts back
-        float x_left = x_left_rel + center.x;
-        float x_right = x_right_rel + center.x;
+        float left_intercept  = left_intercept_relative  + center.x;
+        float right_intercept = right_intercept_relative + center.x;
 
-        // columns of scanline
-        int cur_col = floor(x_left); // left intercept
-        int stop_col = ceil(x_right); // right intercept
+        int cur_column  = floor(left_intercept);
+        int stop_column = ceil(right_intercept);
 
-        while (cur_col < stop_col)
+        while (cur_column < stop_column)
         {
-            set_pixel(cur_col, cur_scanline, v.color, buffer);
-            cur_col++;
+            if (!is_out_of_bounds(cur_column, cur_scanline, buffer)) set_pixel(cur_column, cur_scanline, v.color, buffer);
+            cur_column++;
         }
 
         cur_scanline++;
@@ -64,6 +55,20 @@ void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 
 void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffer)
 {
+    /**
+     * PROCESS:
+     * 
+     * if line slope is steep 
+     *      invert axis
+     * 
+     * set up edge tracker
+     * 
+     * for each column line spans
+     *      rasterize at column
+     *      
+     *      march one step forward on edge
+     */
+
     struct Endpoint
     {
         const Vertex *vert;
@@ -118,14 +123,15 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
         for (int i = 0; i < line_thickness; i++)
         {
             int shift = i + (1 - width);
+            int shifted_scanline = shift + scanline;
 
             if (steep_slope) 
             {
-                set_pixel(shift + scanline, edge.x, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
+                if (!is_out_of_bounds(shifted_scanline, edge.x, buffer)) set_pixel(shifted_scanline, edge.x, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
             }
             else 
             {
-                set_pixel(edge.x, shift + scanline, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
+                if (!is_out_of_bounds(edge.x, shifted_scanline, buffer)) set_pixel(edge.x, shifted_scanline, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
             }
         }
 
@@ -139,10 +145,9 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
 
 // Cuts a polygon into two pieces
 // Cut is horizontal and is at y
+// Polygon MUST have some winding
 void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex>& top, std::vector<Vertex>& bottom)
 {
-    // IDEA: polygon MUST have some winding
-
     for (int i = 0; i < polygon.size(); i++)
     {
         const Vertex& cur = polygon[i];
@@ -164,24 +169,24 @@ void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex
         // Check if we cross cut line on way to next vertex
         if (((cur_dy < 0.0f) && (next_dy > 0.0f)) || ((cur_dy > 0.0f) && (next_dy < 0.0f)))
         {
-            // Interpolate
-            float dx_dy = (next.device.x - cur.device.x) / (next.device.y - cur.device.y);
+            assert((next.device.y - cur.device.y) != 0.0f);
+            float one_over_delta_y = 1.0f / (next.device.y - cur.device.y);
+
+            // Interpolate device point
+            float dx_dy = (next.device.x - cur.device.x) * one_over_delta_y;
             float dx = cur_dy * dx_dy;
-            Vec2f interp_device_coord (cur.device.x + dx, y);
 
-            float dr_dy = (next.color.x - cur.color.x) / (next.device.y - cur.device.y);
-            float dg_dy = (next.color.y - cur.color.y) / (next.device.y - cur.device.y);
-            float db_dy = (next.color.z - cur.color.z) / (next.device.y - cur.device.y);
-
+            // Interpolate color
+            float dr_dy = (next.color.x - cur.color.x) * one_over_delta_y;
+            float dg_dy = (next.color.y - cur.color.y) * one_over_delta_y;
+            float db_dy = (next.color.z - cur.color.z) * one_over_delta_y;
             float dr = cur_dy * dr_dy;
             float dg = cur_dy * dg_dy;
             float db = cur_dy * db_dy;
 
-            Vertex interpolated; 
-            interpolated.device = interp_device_coord;
+            Vertex interpolated;
+            interpolated.device = Vec2f(cur.device.x + dx, y);
             interpolated.color = Vec3f(cur.color.x + dr, cur.color.y + dg, cur.color.z + db);
-
-            // TODO: do interpolation for rest of values!
 
             top.push_back(interpolated);
             bottom.push_back(interpolated);
@@ -207,6 +212,9 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
      *      take step forward on left edge tracker
      *      take step forward on right edge tracker
      */
+    
+    // Raster policy: don't rasterize at or past top edge
+    // Raster policy: don't rasterize at or past right edge
 
 
     struct TriangleVertexLabels { const Vertex *apex, *left, *right; } labels;
@@ -227,6 +235,7 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
         int x_int, y_int; // use instead of float x, y when known integer math
     };
 
+    assert((labels.apex->device.y - labels.left->device.y) != 0.0f);
     float one_over_delta_y = 1.0f / (labels.apex->device.y - labels.left->device.y); // same for both edges
     EdgeTracker left;
     left.x_inc = (labels.apex->device.x - labels.left->device.x) * one_over_delta_y;
@@ -264,6 +273,7 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
     left.y_int  = start_scanline;
     right.y_int = start_scanline;
 
+    assert((labels.right->device.x - labels.left->device.x) != 0.0f);
     float one_over_delta_x = 1.0f / (labels.right->device.x - labels.left->device.x);
     EdgeTracker scanline;
     scanline.z_inc = (labels.right->depth   - labels.left->depth  ) * one_over_delta_x;
@@ -308,15 +318,13 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 
 // Trapezoid MUST have flat top & bottoms
 void rasterize_trapezoid(const Vertex& v0, const Vertex& v1, const Vertex& v2, const Vertex& v3, Buffer* buffer)
-{  
-    // IDEA: I think its safe to assume culling for backfaceing traps has already occurred
-    // IDEA: raster policy: don't rasterize at or past top edge
-    // IDEA: raster policy: don't rasterize at or past right edge
-
+{
     rasterize_triangle(v0, v1, v2, buffer);
     rasterize_triangle(v2, v3, v0, buffer);
 }
 
+// Polygon is assumed 'flat' (in all dimension)
+// Polygon must have some winding
 void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
 {
     // Allocate vectors once
@@ -327,11 +335,7 @@ void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
     top.clear();
     bottom.clear();
 
-    // Process: cut polygon into rasterize-able triangle or trapezoid
-    // IDEA: polygon is flat, and convex
-    // IDEA: polygon must have some winding
-
-    // IDEA: switch to insertion sort (apparently its faster on smaller lists)
+    // TODO: switch to insertion sort (apparently its faster on smaller lists)
     std::vector<float> sorted_heights (vertices.size());
     for (int i = 0; i < sorted_heights.size(); i++) sorted_heights[i] = vertices[i].device.y;
     std::sort(sorted_heights.begin(), sorted_heights.end());
