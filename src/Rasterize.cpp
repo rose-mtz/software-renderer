@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cassert>
 
+// TODO: stop using exact comparisons for floats
 
 void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 {
@@ -69,54 +70,35 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
      *      march one step forward on edge
      */
 
-    struct Endpoint
-    {
-        const Vertex *vert;
-        Vec2f point;
-    };
-    Endpoint start = { &v0, v0.device };
-    Endpoint end   = { &v1, v1.device };
+    Vertex start = v0;
+    Vertex end   = v1;
 
     float slope;
-    bool steep_slope = (fabs(end.point.y - start.point.y) > fabs(end.point.x - start.point.x));
+    bool steep_slope = (fabs(end.device.y - start.device.y) > fabs(end.device.x - start.device.x));
     if (steep_slope)
     {
         // For steep slope cases, invert the axis (swap x and y)
-        assert((end.point.y - start.point.y) != 0.0f);
-        slope = (end.point.x - start.point.x) / (end.point.y - start.point.y);
-        std::swap(start.point.x, start.point.y);
-        std::swap(end.point.x, end.point.y);
+        assert((end.device.y - start.device.y) != 0.0f);
+        slope = (end.device.x - start.device.x) / (end.device.y - start.device.y);
+        std::swap(start.device.x, start.device.y);
+        std::swap(end.device.x, end.device.y);
     }
     else
     {
-        assert((end.point.x - start.point.x) != 0.0f);
-        slope =  (end.point.y - start.point.y) / (end.point.x - start.point.x);
+        assert((end.device.x - start.device.x) != 0.0f);
+        slope =  (end.device.y - start.device.y) / (end.device.x - start.device.x);
     }
 
     // March line in increasing x-direction
-    if (start.point.x > end.point.x) std::swap(start, end);
+    if (start.device.x > end.device.x) std::swap(start, end);
 
-    struct EdgeTracker 
-    {  
-        int x;
-        float r, g, b, y;
-        float r_inc, g_inc, b_inc, y_inc;
-    } edge;
-    edge.x = start.point.x;
-    edge.y = start.point.y;
-    edge.r = start.vert->color.x;
-    edge.g = start.vert->color.y;
-    edge.b = start.vert->color.z;
-    assert((end.point.x - start.point.x) != 0.0f);
-    edge.r_inc = (end.vert->color.x - start.vert->color.x) / (end.point.x - start.point.x);
-    edge.g_inc = (end.vert->color.y - start.vert->color.y) / (end.point.x - start.point.x);
-    edge.b_inc = (end.vert->color.z - start.vert->color.z) / (end.point.x - start.point.x);
-    edge.y_inc = slope;
+    EdgeTracker edge = set_up_edge_tracker(start, end, false);
 
-    int final_column = ceil(end.point.x);
+    int cur_column = floor(start.device.x);
+    int final_column = ceil(end.device.x);
     int line_thickness = 1 + ((width - 1) * 2);
 
-    while (edge.x < final_column)
+    while (cur_column < final_column)
     {
         int scanline = floor(edge.y);
 
@@ -127,19 +109,16 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
 
             if (steep_slope) 
             {
-                if (!is_out_of_bounds(shifted_scanline, edge.x, buffer)) set_pixel(shifted_scanline, edge.x, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
+                if (!is_out_of_bounds(shifted_scanline, cur_column, buffer)) set_pixel(shifted_scanline, cur_column, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
             }
             else 
             {
-                if (!is_out_of_bounds(edge.x, shifted_scanline, buffer)) set_pixel(edge.x, shifted_scanline, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
+                if (!is_out_of_bounds(cur_column, shifted_scanline, buffer)) set_pixel(cur_column, shifted_scanline, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
             }
         }
 
-        edge.r += edge.r_inc;
-        edge.g += edge.g_inc;
-        edge.b += edge.b_inc;
-        edge.x++;
-        edge.y += edge.y_inc;
+        take_step(edge);
+        cur_column++;
     }
 }
 
@@ -151,7 +130,7 @@ void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex
     for (int i = 0; i < polygon.size(); i++)
     {
         const Vertex& cur = polygon[i];
-        float cur_dy = y - cur.device.y;
+        float cur_dy = y - cur.device.y; // relative to cut line
 
         // Add current vertex to its respective list(s)
         if (cur_dy >= 0.0f)
@@ -164,32 +143,21 @@ void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex
         }
 
         const Vertex& next = polygon[(i + 1) % polygon.size()];
-        float next_dy = y - next.device.y;
+        float next_dy = y - next.device.y; // relative to cut line
 
         // Check if we cross cut line on way to next vertex
         if (((cur_dy < 0.0f) && (next_dy > 0.0f)) || ((cur_dy > 0.0f) && (next_dy < 0.0f)))
         {
-            assert((next.device.y - cur.device.y) != 0.0f);
-            float one_over_delta_y = 1.0f / (next.device.y - cur.device.y);
+            assert(next.device.y != cur.device.y);
 
-            // Interpolate device point
-            float dx_dy = (next.device.x - cur.device.x) * one_over_delta_y;
-            float dx = cur_dy * dx_dy;
+            EdgeTracker edge = set_up_edge_tracker(cur, next, true);
+            take_step(edge, cur_dy);
+            Vertex interp_vertex = get_vertex(edge);
+            // Triangle rasterizer expects exact value (no floating point rounding)
+            interp_vertex.device.y = y;
 
-            // Interpolate color
-            float dr_dy = (next.color.x - cur.color.x) * one_over_delta_y;
-            float dg_dy = (next.color.y - cur.color.y) * one_over_delta_y;
-            float db_dy = (next.color.z - cur.color.z) * one_over_delta_y;
-            float dr = cur_dy * dr_dy;
-            float dg = cur_dy * dg_dy;
-            float db = cur_dy * db_dy;
-
-            Vertex interpolated;
-            interpolated.device = Vec2f(cur.device.x + dx, y);
-            interpolated.color = Vec3f(cur.color.x + dr, cur.color.y + dg, cur.color.z + db);
-
-            top.push_back(interpolated);
-            bottom.push_back(interpolated);
+            top.push_back(interp_vertex);
+            bottom.push_back(interp_vertex);
         }
     }
 }
@@ -216,6 +184,13 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
     // Raster policy: don't rasterize at or past top edge
     // Raster policy: don't rasterize at or past right edge
 
+    // BUG: 3 colinear vertices is causing issues
+    //      How to handle this?
+    //      Only seen on horizontal colinear vertices, not sure about vertical
+    // PROBLEM: doing exact checks like == with floats is likely bad idea
+    //          need to figure out something else
+    // IDEA: should I make my rasterizer more robust, even at the cost of perf?
+    //       if tiny perf consequences then sure, I can always remove them later, if needed 
 
     struct TriangleVertexLabels { const Vertex *apex, *left, *right; } labels;
     // Set the apex
@@ -227,92 +202,61 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 
     // INPUT DATA SANITY CHECK: flat top/bottom triangle
     assert(labels.left->device.y == labels.right->device.y);
+    // INPUT DATA SANITY CHECK: non-colinear points
+    assert(labels.apex->device.y != labels.left->device.y);
+    assert(labels.right->device.x != labels.left->device.x);
 
-    struct EdgeTracker
-    {
-        float x_inc, y_inc, z_inc, r_inc, g_inc, b_inc;
-        float x, y, z, r, g, b;
-        int x_int, y_int; // use instead of float x, y when known integer math
-    };
-
-    assert((labels.apex->device.y - labels.left->device.y) != 0.0f);
-    float one_over_delta_y = 1.0f / (labels.apex->device.y - labels.left->device.y); // same for both edges
     EdgeTracker left;
-    left.x_inc = (labels.apex->device.x - labels.left->device.x) * one_over_delta_y;
-    left.z_inc = (labels.apex->depth    - labels.left->depth   ) * one_over_delta_y;
-    left.r_inc = (labels.apex->color.x  - labels.left->color.x ) * one_over_delta_y;
-    left.g_inc = (labels.apex->color.y  - labels.left->color.y ) * one_over_delta_y;
-    left.b_inc = (labels.apex->color.z  - labels.left->color.z ) * one_over_delta_y;
     EdgeTracker right;
-    right.x_inc = (labels.apex->device.x - labels.right->device.x) * one_over_delta_y;
 
     int start_scanline;
     bool is_apex_above_other_vertices = labels.apex->device.y > labels.left->device.y;
+    float delta_y;
     if (is_apex_above_other_vertices)
     {
-        float delta_y  = (ceil(labels.left->device.y) - labels.left->device.y); // same for both edges
-        left.x         = labels.left->device.x + (delta_y * left.x_inc);
-        left.z         = labels.left->depth    + (delta_y * left.z_inc);
-        left.r         = labels.left->color.x  + (delta_y * left.r_inc);
-        left.g         = labels.left->color.y  + (delta_y * left.g_inc);
-        left.b         = labels.left->color.z  + (delta_y * left.b_inc);
-        right.x        = labels.right->device.x + (delta_y * right.x_inc);
+        delta_y  = (ceil(labels.left->device.y) - labels.left->device.y); // same for both edges
+        left = set_up_edge_tracker(*labels.left, *labels.apex, true);
+        right = set_up_edge_tracker(*labels.right, *labels.apex, true);
         start_scanline = ceil(labels.left->device.y);
     }
     else
     {
-        float delta_y  = (ceil(labels.apex->device.y) - labels.apex->device.y);
-        left.x         = labels.apex->device.x + (delta_y * left.x_inc);
-        left.z         = labels.apex->depth    + (delta_y * left.z_inc);
-        left.r         = labels.apex->color.x  + (delta_y * left.r_inc);
-        left.g         = labels.apex->color.y  + (delta_y * left.g_inc);
-        left.b         = labels.apex->color.z  + (delta_y * left.b_inc);
-        right.x        = labels.apex->device.x + (delta_y * right.x_inc);
+        delta_y  = (ceil(labels.apex->device.y) - labels.apex->device.y);
+        left = set_up_edge_tracker(*labels.apex, *labels.left, true);
+        right = set_up_edge_tracker(*labels.apex, *labels.right, true);        
         start_scanline = ceil(labels.apex->device.y);
     }
-    left.y_int  = start_scanline;
-    right.y_int = start_scanline;
 
-    assert((labels.right->device.x - labels.left->device.x) != 0.0f);
-    float one_over_delta_x = 1.0f / (labels.right->device.x - labels.left->device.x);
-    EdgeTracker scanline;
-    scanline.z_inc = (labels.right->depth   - labels.left->depth  ) * one_over_delta_x;
-    scanline.r_inc = (labels.right->color.x - labels.left->color.x) * one_over_delta_x;
-    scanline.g_inc = (labels.right->color.y - labels.left->color.y) * one_over_delta_x;
-    scanline.b_inc = (labels.right->color.z - labels.left->color.z) * one_over_delta_x;
+    // Initial step to get on scanline
+    take_step(left, delta_y);
+    take_step(right, delta_y);
+    int cur_scanline = start_scanline;
 
+    EdgeTracker scanline_edge = set_up_edge_tracker(*labels.left, *labels.right, false);
     int stop_scanline = is_apex_above_other_vertices ? ceil(labels.apex->device.y) : ceil(labels.left->device.y);
-    while (left.y_int < stop_scanline)
+
+    while (cur_scanline < stop_scanline)
     {
         float delta_x = (floor(left.x) - left.x);
-        scanline.x_int = floor(left.x);
-        scanline.y_int = left.y_int;
-        scanline.z = left.z + delta_x * scanline.z_inc;
-        scanline.r = left.r + delta_x * scanline.r_inc;
-        scanline.g = left.g + delta_x * scanline.g_inc;
-        scanline.b = left.b + delta_x * scanline.b_inc;
+        // TEMPORARY
+        scanline_edge.z = left.z + delta_x * scanline_edge.z_inc;
+        scanline_edge.r = left.r + delta_x * scanline_edge.r_inc;
+        scanline_edge.g = left.g + delta_x * scanline_edge.g_inc;
+        scanline_edge.b = left.b + delta_x * scanline_edge.b_inc;
+        Vec2i cur_pixel (floor(left.x), cur_scanline);
 
         int right_stop = floor(right.x);
-        while (scanline.x_int < right_stop)
+        while (cur_pixel.x < right_stop)
         {
-            set_pixel(scanline.x_int, scanline.y_int, clampedVec3f(Vec3f(scanline.r, scanline.g, scanline.b), 0.0f, 1.0f), buffer);
+            set_pixel(cur_pixel.x, cur_pixel.y, clampedVec3f(Vec3f(scanline_edge.r, scanline_edge.g, scanline_edge.b), 0.0f, 1.0f), buffer);
 
-            scanline.x_int++;
-            scanline.z += scanline.z_inc;
-            scanline.r += scanline.r_inc;
-            scanline.g += scanline.g_inc;
-            scanline.b += scanline.b_inc;
+            cur_pixel.x++;
+            take_step(scanline_edge);
         }
 
-        left.x += left.x_inc;
-        left.y_int++;
-        left.z += left.z_inc;
-        left.r += left.r_inc;
-        left.g += left.g_inc;
-        left.b += left.b_inc;
-
-        right.x += right.x_inc;
-        right.y_int++;
+        take_step(left);
+        take_step(right); // OPTIMIZE: really only need the right.x value, don't need to interpolate everything else
+        cur_scanline++;
     }
 }
 
