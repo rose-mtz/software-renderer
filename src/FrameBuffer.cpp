@@ -2,9 +2,9 @@
 #include <cassert>
 
 // returns true if out-of-bounds
-bool is_out_of_bounds(int x, int y, Buffer* buffer)
+bool is_out_of_bounds(const Vec2i& pixel, Buffer* buffer)
 {
-    return (x < 0 || x >= buffer->width) || (y < 0 || y >= buffer->height);
+    return (pixel.x < 0 || pixel.x >= buffer->width) || (pixel.y < 0 || pixel.y >= buffer->height);
 }
 
 // Does not check out-of-bounds input
@@ -60,5 +60,14 @@ void blit_buffer(Buffer* src, Buffer* target) // , float percent_width, float pr
             Vec3f sample = get_pixel(x_src, y_src, src);
             set_pixel(x,y, sample, target);
         }
+    }
+}
+
+void set_fragment(const Fragment& frag, Buffer* buffer)
+{
+    if (!is_out_of_bounds(frag.pixel, buffer))
+    {
+        // No depth check for now.
+        buffer->pixels[frag.pixel.y * buffer->width + frag.pixel.x] = frag.color;
     }
 }

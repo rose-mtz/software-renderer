@@ -46,7 +46,11 @@ void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 
         while (cur_column < stop_column)
         {
-            if (!is_out_of_bounds(cur_column, cur_scanline, buffer)) set_pixel(cur_column, cur_scanline, v.color, buffer);
+            Fragment frag;
+            frag.color = v.color;
+            frag.pixel = Vec2i(cur_column, cur_scanline);
+            set_fragment(frag, buffer);
+
             cur_column++;
         }
 
@@ -107,14 +111,17 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
             int shift = i + (1 - width);
             int shifted_scanline = shift + scanline;
 
+            Fragment frag;
+            frag.color = clampedVec3f(edge.v.color, 0.0f, 1.0f);
             if (steep_slope) 
             {
-                if (!is_out_of_bounds(shifted_scanline, cur_column, buffer)) set_pixel(shifted_scanline, cur_column, clampedVec3f(edge.v.color, 0.0f, 1.0f), buffer);
+                frag.pixel = Vec2i(shifted_scanline, cur_column);
             }
-            else 
+            else
             {
-                if (!is_out_of_bounds(cur_column, shifted_scanline, buffer)) set_pixel(cur_column, shifted_scanline, clampedVec3f(edge.v.color, 0.0f, 1.0f), buffer);
+                frag.pixel = Vec2i(cur_column, shifted_scanline);
             }
+            set_fragment(frag, buffer);
         }
 
         take_step(edge);
@@ -206,7 +213,10 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
         int right_stop = floor(right.v.device.x);
         while (cur_pixel.x < right_stop)
         {
-            set_pixel(cur_pixel.x, cur_pixel.y, clampedVec3f(scanline_edge.v.color, 0.0f, 1.0f), buffer);
+            Fragment frag;
+            frag.color = clampedVec3f(scanline_edge.v.color, 0.0f, 1.0f);
+            frag.pixel = Vec2i(cur_pixel.x, cur_pixel.y);
+            set_fragment(frag, buffer);
 
             cur_pixel.x++;
             take_step(scanline_edge);
