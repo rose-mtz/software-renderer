@@ -1,67 +1,45 @@
 #include "Vertex.h"
 #include <cassert>
 
-EdgeTracker set_up_edge_tracker(const Vertex& start, const Vertex& end, bool step_in_y_direction)
+// v0 will be set the initial value of point on edge
+// to start on
+EdgeTracker set_up_edge_tracker(const Vertex& v0, const Vertex& v1, bool step_in_y_direction)
 {
-    // NOTE: its up to user to set up x_integer, and y_integer
-
-    EdgeTracker edge;
-
     float delta;
     if (step_in_y_direction)
     {
-        delta = end.device.y - start.device.y;
+        delta = v1.device.y - v0.device.y;
     }
     else
     {
-        delta = end.device.x - start.device.x;
+        delta = v1.device.x - v0.device.x;
     }
     assert(delta != 0.0f); // delta must not be zero
     float one_over_delta = 1.0f / delta;
 
-    // Note: likely that dx/dy * dy != 1.0f due to floating point rounding (close to 1.0f, but not exact) [same goes for dy/dx * dx]
+    EdgeTracker edge;
+
+    // Note: likely that dx/dy * dy != 1.0f due to floating point rounding (close to 1.0f, but not exact) [same goes for if its dy/dx * dx]
     //       up to user to use integers in that case for exact integer math
-    edge.x_inc = (end.device.x - start.device.x) * one_over_delta;
-    edge.y_inc = (end.device.y - start.device.y) * one_over_delta;
-    edge.z_inc = (end.depth    - start.depth) * one_over_delta;
+    edge.v_inc.device.x = (v1.device.x - v0.device.x) * one_over_delta;
+    edge.v_inc.device.y = (v1.device.y - v0.device.y) * one_over_delta;
+    edge.v_inc.depth    = (v1.depth    - v0.depth   ) * one_over_delta;
 
-    edge.r_inc = (end.color.x - start.color.x) * one_over_delta;
-    edge.g_inc = (end.color.y - start.color.y) * one_over_delta;
-    edge.b_inc = (end.color.z - start.color.z) * one_over_delta;
+    edge.v_inc.color.x = (v1.color.x - v0.color.x) * one_over_delta;
+    edge.v_inc.color.y = (v1.color.y - v0.color.y) * one_over_delta;
+    edge.v_inc.color.z = (v1.color.z - v0.color.z) * one_over_delta;
 
-    edge.r = start.color.x;
-    edge.g = start.color.y;
-    edge.b = start.color.z;
-    edge.x = start.device.x;
-    edge.y = start.device.y;
-    edge.z = start.depth;
+    edge.v = v0;
 
     return edge;
 }
 
 void take_step(EdgeTracker& edge, float step)
 {
-    // NOTE: taking a positive step forward does not necessarily mean taking a step towards end, could be taking 
-    //          step away from it 
-
-    edge.x += edge.x_inc * step;
-    edge.y += edge.y_inc * step;
-    edge.z += edge.z_inc * step;
-    edge.r += edge.r_inc * step;
-    edge.g += edge.g_inc * step;
-    edge.b += edge.b_inc * step;
+    edge.v.device.x += edge.v_inc.device.x * step;
+    edge.v.device.y += edge.v_inc.device.y * step;
+    edge.v.depth    += edge.v_inc.depth    * step;
+    edge.v.color.x  += edge.v_inc.color.x  * step;
+    edge.v.color.y  += edge.v_inc.color.y  * step;
+    edge.v.color.z  += edge.v_inc.color.z  * step;
 };
-
-Vertex get_vertex(const EdgeTracker& edge)
-{
-    // NOTE: its up to user to correct vertex.device coordinates with
-    //          x_integer and y_integer if they use them
-    //          its likely default values will be slightly off due to float rounding
-
-    Vertex vertex;
-    vertex.color = Vec3f(edge.r, edge.g, edge.b);
-    vertex.device = Vec2f(edge.x, edge.y);
-    vertex.depth = edge.z;
-
-    return vertex;
-}

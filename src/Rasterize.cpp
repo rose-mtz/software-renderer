@@ -3,6 +3,7 @@
 #include <cassert>
 
 // TODO: stop using exact comparisons for floats
+// TODO: move geomtry stuff out!
 
 void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 {
@@ -100,7 +101,7 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
 
     while (cur_column < final_column)
     {
-        int scanline = floor(edge.y);
+        int scanline = floor(edge.v.device.y);
 
         for (int i = 0; i < line_thickness; i++)
         {
@@ -109,11 +110,11 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
 
             if (steep_slope) 
             {
-                if (!is_out_of_bounds(shifted_scanline, cur_column, buffer)) set_pixel(shifted_scanline, cur_column, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
+                if (!is_out_of_bounds(shifted_scanline, cur_column, buffer)) set_pixel(shifted_scanline, cur_column, clampedVec3f(edge.v.color, 0.0f, 1.0f), buffer);
             }
             else 
             {
-                if (!is_out_of_bounds(cur_column, shifted_scanline, buffer)) set_pixel(cur_column, shifted_scanline, clampedVec3f(Vec3f(edge.r, edge.g, edge.b), 0.0f, 1.0f), buffer);
+                if (!is_out_of_bounds(cur_column, shifted_scanline, buffer)) set_pixel(cur_column, shifted_scanline, clampedVec3f(edge.v.color, 0.0f, 1.0f), buffer);
             }
         }
 
@@ -152,12 +153,11 @@ void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex
 
             EdgeTracker edge = set_up_edge_tracker(cur, next, true);
             take_step(edge, cur_dy);
-            Vertex interp_vertex = get_vertex(edge);
             // Triangle rasterizer expects exact value (no floating point rounding)
-            interp_vertex.device.y = y;
+            edge.v.device.y = y;
 
-            top.push_back(interp_vertex);
-            bottom.push_back(interp_vertex);
+            top.push_back(edge.v);
+            bottom.push_back(edge.v);
         }
     }
 }
@@ -237,25 +237,23 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 
     while (cur_scanline < stop_scanline)
     {
-        float delta_x = (floor(left.x) - left.x);
-        // TEMPORARY
-        scanline_edge.z = left.z + delta_x * scanline_edge.z_inc;
-        scanline_edge.r = left.r + delta_x * scanline_edge.r_inc;
-        scanline_edge.g = left.g + delta_x * scanline_edge.g_inc;
-        scanline_edge.b = left.b + delta_x * scanline_edge.b_inc;
-        Vec2i cur_pixel (floor(left.x), cur_scanline);
+        float delta_x = (floor(left.v.device.x) - left.v.device.x);
+        scanline_edge.v = left.v;
+        take_step(scanline_edge, delta_x);
 
-        int right_stop = floor(right.x);
+        Vec2i cur_pixel (floor(left.v.device.x), cur_scanline);
+
+        int right_stop = floor(right.v.device.x);
         while (cur_pixel.x < right_stop)
         {
-            set_pixel(cur_pixel.x, cur_pixel.y, clampedVec3f(Vec3f(scanline_edge.r, scanline_edge.g, scanline_edge.b), 0.0f, 1.0f), buffer);
+            set_pixel(cur_pixel.x, cur_pixel.y, clampedVec3f(scanline_edge.v.color, 0.0f, 1.0f), buffer);
 
             cur_pixel.x++;
             take_step(scanline_edge);
         }
 
         take_step(left);
-        take_step(right); // OPTIMIZE: really only need the right.x value, don't need to interpolate everything else
+        right.v.device.x += right.v_inc.device.x; // only need to calculate x value
         cur_scanline++;
     }
 }
