@@ -1,9 +1,8 @@
 #include "Rasterize.h"
+#include "Geometry.h"
 #include <algorithm>
 #include <cassert>
 
-// TODO: stop using exact comparisons for floats
-// TODO: move geomtry stuff out!
 
 void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 {
@@ -123,45 +122,6 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
     }
 }
 
-// Cuts a polygon into two pieces
-// Cut is horizontal and is at y
-// Polygon MUST have some winding
-void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex>& top, std::vector<Vertex>& bottom)
-{
-    for (int i = 0; i < polygon.size(); i++)
-    {
-        const Vertex& cur = polygon[i];
-        float cur_dy = y - cur.device.y; // relative to cut line
-
-        // Add current vertex to its respective list(s)
-        if (cur_dy >= 0.0f)
-        {
-            bottom.push_back(cur);
-        }
-        if (cur_dy <= 0.0f)
-        {
-            top.push_back(cur);
-        }
-
-        const Vertex& next = polygon[(i + 1) % polygon.size()];
-        float next_dy = y - next.device.y; // relative to cut line
-
-        // Check if we cross cut line on way to next vertex
-        if (((cur_dy < 0.0f) && (next_dy > 0.0f)) || ((cur_dy > 0.0f) && (next_dy < 0.0f)))
-        {
-            assert(next.device.y != cur.device.y);
-
-            EdgeTracker edge = set_up_edge_tracker(cur, next, true);
-            take_step(edge, cur_dy);
-            // Triangle rasterizer expects exact value (no floating point rounding)
-            edge.v.device.y = y;
-
-            top.push_back(edge.v);
-            bottom.push_back(edge.v);
-        }
-    }
-}
-
 void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Buffer* buffer)
 {
     /**
@@ -194,8 +154,8 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 
     struct TriangleVertexLabels { const Vertex *apex, *left, *right; } labels;
     // Set the apex
-    if      (v0.device.y == v1.device.y) labels = { &v2, &v0, &v1 };
-    else if (v0.device.y == v2.device.y) labels = { &v1, &v0, &v2 };
+    if      (v0.device.y == v1.device.y) labels = { &v2, &v0, &v1 };    // WARNING: exact float checks is not good idea, but for now I know that results can be exact
+    else if (v0.device.y == v2.device.y) labels = { &v1, &v0, &v2 };    //          due to setting exact values before passing to this function
     else                                 labels = { &v0, &v1, &v2 };
     // Swap left right to correct order
     if (labels.left->device.x > labels.right->device.x) std::swap(labels.left, labels.right);
