@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <vector>
 #include "Window.h"
-#include "Math.h"
+#include "Vec.h"
 #include "Rasterize.h"
 
 Buffer* low_res_buffer = nullptr;

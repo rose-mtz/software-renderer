@@ -41,3 +41,17 @@ void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex
         }
     }
 }
+
+Vec3f reflect_vector(const Vec3f& surface_normal, const Vec3f& vector)
+{
+    // CREDIT: https://math.stackexchange.com/questions/13261/how-to-get-a-reflection-vector
+    return (vector - (surface_normal * 2.0f * (vector * surface_normal))).normalize();
+}
+
+Vec3f get_triangle_normal(const Vec3f& a, const Vec3f& b, const Vec3f& c)
+{
+    Vec3f v1 = b - a;
+    Vec3f v2 = c - a;
+
+    return (v1 ^ v2).normalize();
+}

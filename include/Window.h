@@ -1,5 +1,5 @@
 #include <SDL3/SDL.h>
-#include "Math.h"
+#include "Vec.h"
 
 struct Window
 {
