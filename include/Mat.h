@@ -18,8 +18,8 @@ struct Mat3x3f
     Mat3x3f inv()          const;
     float   determinant()  const;
     Mat3x3f transposed()   const;
-    void    print()        const;
     Vec3f   get_col(int i) const;
+    void    print()        const;
 
     static Mat3x3f zero_matrix();
     static Mat3x3f identity_matrix();
@@ -45,10 +45,10 @@ struct Mat4x4f
     Vec4f   operator * (const Vec4f& right)   const;
     Mat4x4f operator * (const Mat4x4f& right) const;
 
-    Vec4f   get_col(int i) const;
     Mat3x3f truncated()    const;
+    Mat4x4f transposed()   const;
+    Vec4f   get_col(int i) const;
     void    print()        const;
-    Mat4x4f transpose()    const;
 
     static Mat4x4f affine_matrix(const Mat3x3f& basis, const Vec3f& translation);
     static Mat4x4f look_at(const Vec3f& pos, const Vec3f& at, const Vec3f& up);

@@ -17,13 +17,13 @@ template <class t> struct Vec2
 
 	Vec2<t> operator + (const Vec2<t> &v) const { return Vec2<t>(x + v.x, y + v.y); }
 	Vec2<t> operator - (const Vec2<t> &v) const { return Vec2<t>(x - v.x, y - v.y); }
-	Vec2<t> operator * (float s)          const { return Vec2<t>(x * s,   y * s);   }
+	Vec2<t> operator * (t s)              const { return Vec2<t>(x * s,   y * s);   }
 	t       operator * (const Vec2<t> &v) const { return (x * v.x) + (y * v.y);     }
     t       operator ^ (const Vec2<t> &v) const { return (x * v.y) - (y * v.x);     }
 
-	float   length()                   const { return std::sqrt((x * x) + (y * y)); }
-	Vec2<t> normalize()                const { return (*this) * (1.0f/length());    }
-    Vec2<t> hadamard(const Vec2<t>& v) const { return Vec2<t>(x * v.x, y * v.y);    }
+	float   length()                     const { return std::sqrt((x * x) + (y * y)); }
+	Vec2<t> normalized()                 const { return (*this) * (1.0f/length());    }
+    Vec2<t> hadamarded(const Vec2<t>& v) const { return Vec2<t>(x * v.x, y * v.y);    }
 
     template <class > friend std::ostream& operator<<(std::ostream& s, Vec2<t>& v);
 };
@@ -43,13 +43,13 @@ template <class t> struct Vec3
 
 	Vec3<t> operator + (const Vec3<t> &v) const { return Vec3<t>(x + v.x, y + v.y, z + v.z); }
 	Vec3<t> operator - (const Vec3<t> &v) const { return Vec3<t>(x - v.x, y - v.y, z - v.z); }
-	Vec3<t> operator * (float s)          const { return Vec3<t>(x * s, y * s, z * s);       }
+	Vec3<t> operator * (t s)              const { return Vec3<t>(x * s, y * s, z * s);       }
 	t       operator * (const Vec3<t> &v) const { return (x * v.x) + (y * v.y) + (z * v.z);  }
 	Vec3<t> operator ^ (const Vec3<t> &v) const { return Vec3<t>((y * v.z) - (z * v.y), (z * v.x) - (x * v.z), (x * v.y) - (y * v.x)); }
 
-	float   length()                   const { return std::sqrt((x * x) + (y * y) + (z * z)); }
-	Vec3<t> normalize()                const { return (*this) * (1.0f/length());              }
-	Vec3<t> hadamard(const Vec3<t>& v) const { return Vec3<t>(x * v.x, y * v.y, z * v.z);     }
+	float   length()                     const { return std::sqrt((x * x) + (y * y) + (z * z)); }
+	Vec3<t> normalized()                 const { return (*this) * (1.0f/length());              }
+	Vec3<t> hadamarded(const Vec3<t>& v) const { return Vec3<t>(x * v.x, y * v.y, z * v.z);     }
 
 	Vec2<t> xy() const { return Vec2<t>(x, y); }
 
@@ -71,11 +71,10 @@ template <class t> struct Vec4
 
 	Vec4<t> operator + (const Vec4<t> &v) const { return Vec4<t>(x + v.x, y + v.y, z + v.z, w + v.w); }
 	Vec4<t> operator - (const Vec4<t> &v) const { return Vec4<t>(x - v.x, y - v.y, z - v.z, w - v.w); }
+	Vec4<t> operator * (float s)          const { return Vec4<t>(x * s, y * s, z * s, w * s);         }
 
-	Vec4<t> scale(float s) const { return Vec4<t>(x * s, y * s, z * s, w * s); }
-	Vec3<t> homogenize()   const { return Vec3<t>(x / w, y / w, z / w);        }
-
-	Vec3<t> xyz() const { return Vec3<t>(x, y, z); }
+	Vec3<t> homogenized() const { return Vec3<t>(x / w, y / w, z / w); }
+	Vec3<t> xyz()         const { return Vec3<t>(x, y, z);             }
 
 	template <class > friend std::ostream& operator<<(std::ostream& s, Vec4<t>& v);
 };

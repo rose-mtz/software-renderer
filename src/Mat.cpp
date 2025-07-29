@@ -248,7 +248,7 @@ void Mat4x4f::print() const
     std::cout << "(" << mat[3][0] << ", " << mat[3][1] << ", " << mat[3][2] << ", " << mat[3][3] << ")\n";
 }
 
-Mat4x4f Mat4x4f::transpose() const
+Mat4x4f Mat4x4f::transposed() const
 {
     Mat4x4f transposed_mat;
 
@@ -275,16 +275,16 @@ Mat4x4f Mat4x4f::affine_matrix(const Mat3x3f& basis, const Vec3f& translation)
 
 Mat4x4f Mat4x4f::look_at(const Vec3f& pos, const Vec3f& at, const Vec3f& up)
 {
-    Vec3f z = (pos - at).normalize(); // 'backwards' of camera
-    Vec3f x = (up ^ z).normalize();   // right of camera
-    Vec3f y = (z ^ x).normalize();    // up of camera
+    Vec3f z = (pos - at).normalized(); // 'backwards' of camera
+    Vec3f x = (up ^ z).normalized();   // right of camera
+    Vec3f y = (z ^ x).normalized();    // up of camera
 
     Mat4x4f rotation_transposed = Mat4x4f(
         Vec4f(x, 0.0f),
         Vec4f(y, 0.0f),
         Vec4f(z, 0.0f),
         Vec4f(0.0f, 0.0f, 0.0f, 1.0f)
-    ).transpose();
+    ).transposed();
 
     Mat4x4f translation_inv = translation(pos * -1.0f);
 
