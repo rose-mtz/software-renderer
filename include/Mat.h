@@ -57,6 +57,8 @@ struct Mat4x4f
     static Mat4x4f rotation_z(float theta);
     static Mat4x4f translation(const Vec3f& v);
     static Mat4x4f scale(const Vec3f& scale);
+
+    // TODO: switch to rotation about arbitrary axis
 };
 
 // Utility functions
