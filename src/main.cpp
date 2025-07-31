@@ -7,6 +7,8 @@
 #include "Window.h"
 #include "Vec.h"
 #include "Rasterize.h"
+#include "Model.h"
+#include "Mat.h"
 
 struct Actions
 {
@@ -32,8 +34,11 @@ struct ProgramState
     float dt = 0;
     Buffer* low_res_buffer = nullptr;
     Buffer* screen_res_buffer = nullptr;
-    Vec2f mouse_pos_screen_adj;
+    Vec2f mouse_pos;
     std::vector<std::vector<Vertex>> list_of_user_polys = std::vector<std::vector<Vertex>>(1);
+    float theta = 0.0f;
+
+    Model* model = nullptr;
 } state;
 
 
@@ -68,6 +73,8 @@ void init()
     init_window(640, 480);    
     resize_buffer(state.screen_res_buffer, 640, 480);
     resize_buffer(state.low_res_buffer, 160, 120);
+
+    state.model = new Model("obj/square.obj");
 }
 
 void handle_time()
@@ -95,36 +102,82 @@ void handle_events()
 
 void render_scene(Buffer* frame_buffer)
 {
-    Vec3f POINT_COLOR (0.0f, 1.0f, 0.0f);
-    Vec3f LINE_COLOR  (1.0f, 0.0f, 0.0f);
+    Mat4x4f local_to_world = Mat4x4f::scale(Vec3f(5.0f));
+    state.theta += state.dt;
 
-    for (int i = 0; i < state.list_of_user_polys.size(); i++)
+    Vec3f camera_pos (3.0f * sin(state.theta * 0.001f), 0.0f, 3.0f * cos(state.theta * 0.001f));
+    Vec3f camera_look_at (0.0f);
+    Vec3f camera_up (0.0f, 1.0f, 0.0f);
+    Mat4x4f world_to_camera = Mat4x4f::look_at(camera_pos, camera_look_at, camera_up);
+
+    struct VirtualScreen
     {
-        std::vector<Vertex>& poly = state.list_of_user_polys[i];
+        float width;
+        float height;
+        float near = 5.0f; // assume 1 for now
+    } virtual_screen;
 
-        if (poly.size() > 2)
-        {
-            rasterize_polygon(poly, frame_buffer);
-        }
+    // Should be integer math?
+    // Only integer size virtual screen?
+    float aspect_ratio = state.low_res_buffer->width / state.low_res_buffer->height;
+    virtual_screen.height = 8.0f;
+    virtual_screen.width = virtual_screen.height * aspect_ratio;
 
-        if (poly.size() > 1)
-        {
-            for (int j = 0; j < poly.size(); j++)
-            {
-                const Vertex& start = poly[j];
-                const Vertex& end = poly[(j + 1) % poly.size()];
-                rasterize_line(start, end, 2, frame_buffer);
-            }
-        }
+    // Assumes camera is orthonormal basis
+    Vec3f scale_factor (state.low_res_buffer->width/virtual_screen.width/2.0f, state.low_res_buffer->height/virtual_screen.height/2.0f, 0.0f);
+    Mat4x4f camera_to_device = Mat4x4f::translation(Vec3f(state.low_res_buffer->width/2.0f, state.low_res_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
+    Vec3f face_color (1.0f, 0.0f, 0.0f);
+    std::vector<Vertex> polygon;
 
-        for (int j = 0; j < poly.size(); j++)
-        {
-            Vertex v = poly[j];
-            int POINT_SIZE = 4;
-            
-            rasterize_point(v, POINT_SIZE, frame_buffer);
-        }
+    std::vector<int> face = state.model->get_face(0); // 1 face
+    for (int i = 0; i < face.size(); i++)
+    {
+        Vec3f local_pos = state.model->get_local_position(face[i]);
+        Vec3f world_pos = local_to_world * Vec4f(local_pos, 1.0f);
+        Vec3f view_pos = world_to_camera * Vec4f(world_pos, 1.0f);
+        Vec3f projected_pos = Vec3f(view_pos.x / fabs(view_pos.z), view_pos.y / fabs(view_pos.z), view_pos.z);
+        Vec3f device_pos = camera_to_device * Vec4f(projected_pos, 1.0f);
+
+        Vertex vert;
+        vert.device = Vec2f(device_pos.x, device_pos.y);
+        vert.depth = device_pos.z;
+        vert.color = face_color;
+
+        polygon.push_back(vert);
     }
+
+    rasterize_polygon(polygon, frame_buffer);
+
+    // Vec3f POINT_COLOR (0.0f, 1.0f, 0.0f);
+    // Vec3f LINE_COLOR  (1.0f, 0.0f, 0.0f);
+
+    // for (int i = 0; i < state.list_of_user_polys.size(); i++)
+    // {
+    //     std::vector<Vertex>& poly = state.list_of_user_polys[i];
+
+    //     if (poly.size() > 2)
+    //     {
+    //         rasterize_polygon(poly, frame_buffer);
+    //     }
+
+    //     if (poly.size() > 1)
+    //     {
+    //         for (int j = 0; j < poly.size(); j++)
+    //         {
+    //             const Vertex& start = poly[j];
+    //             const Vertex& end = poly[(j + 1) % poly.size()];
+    //             rasterize_line(start, end, 2, frame_buffer);
+    //         }
+    //     }
+
+    //     for (int j = 0; j < poly.size(); j++)
+    //     {
+    //         Vertex v = poly[j];
+    //         int POINT_SIZE = 4;
+            
+    //         rasterize_point(v, POINT_SIZE, frame_buffer);
+    //     }
+    // }
 }
 
 void draw()
@@ -165,15 +218,15 @@ void update()
         float x_basis_scale = ((float) state.low_res_buffer->width)  / state.screen_res_buffer->width;
         float y_basis_scale = ((float) state.low_res_buffer->height) / state.screen_res_buffer->height;
         float y_pos_flipped = (window.height - window.input.mouse.pos.y);
-        state.mouse_pos_screen_adj.x = window.input.mouse.pos.x * x_basis_scale;
-        state.mouse_pos_screen_adj.y = y_pos_flipped * y_basis_scale;
+        state.mouse_pos.x = window.input.mouse.pos.x * x_basis_scale;
+        state.mouse_pos.y = y_pos_flipped * y_basis_scale;
     }
 
     if (input_actions.add_vertex)
     {
         Vertex vertex;
         vertex.color = rnd_color();
-        vertex.device = Vec2f(state.mouse_pos_screen_adj.x, state.mouse_pos_screen_adj.y);
+        vertex.device = Vec2f(state.mouse_pos.x, state.mouse_pos.y);
         state.list_of_user_polys[state.active_user_poly].push_back(vertex);
     }
 
@@ -183,11 +236,11 @@ void update()
 
         int closest = 0; // for now I'll assume atleast 1 vertex
         Vec2f closest_pos = state.list_of_user_polys[state.active_user_poly][closest].device;
-        float closest_distance = sqrt((closest_pos.x - state.mouse_pos_screen_adj.x)*(closest_pos.x - state.mouse_pos_screen_adj.x) + (closest_pos.y - state.mouse_pos_screen_adj.y)*(closest_pos.y - state.mouse_pos_screen_adj.y));
+        float closest_distance = sqrt((closest_pos.x - state.mouse_pos.x)*(closest_pos.x - state.mouse_pos.x) + (closest_pos.y - state.mouse_pos.y)*(closest_pos.y - state.mouse_pos.y));
         for (int i = 1; i < state.list_of_user_polys[state.active_user_poly].size(); i++)
         {
             Vec2f current_pos = state.list_of_user_polys[state.active_user_poly][i].device;
-            float current_distance = sqrt((current_pos.x - state.mouse_pos_screen_adj.x)*(current_pos.x - state.mouse_pos_screen_adj.x) + (current_pos.y - state.mouse_pos_screen_adj.y)*(current_pos.y - state.mouse_pos_screen_adj.y));
+            float current_distance = sqrt((current_pos.x - state.mouse_pos.x)*(current_pos.x - state.mouse_pos.x) + (current_pos.y - state.mouse_pos.y)*(current_pos.y - state.mouse_pos.y));
 
             if (current_distance < closest_distance)
             {
@@ -228,7 +281,7 @@ void update()
     if (state.is_dragging_vertex)
     {
         Vertex& vertex = state.list_of_user_polys[state.active_user_poly][state.active_vertex];
-        vertex.device = state.mouse_pos_screen_adj;
+        vertex.device = state.mouse_pos;
     }
 }
 

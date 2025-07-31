@@ -28,6 +28,8 @@ template <class t> struct Vec2
     template <class > friend std::ostream& operator<<(std::ostream& s, Vec2<t>& v);
 };
 
+template <class t> struct Vec4;
+
 template <class t> struct Vec3 
 {
 	union 
@@ -40,6 +42,7 @@ template <class t> struct Vec3
 	Vec3()                 : x(0),  y(0),  z(0)  {}
 	explicit Vec3(t s)     : x(s),  y(s),  z(s)  {}
 	Vec3(t _x, t _y, t _z) : x(_x), y(_y), z(_z) {}
+	Vec3(Vec4<t> v)		   : x(v.x), y(v.y), z(v.z) {}
 
 	Vec3<t> operator + (const Vec3<t> &v) const { return Vec3<t>(x + v.x, y + v.y, z + v.z); }
 	Vec3<t> operator - (const Vec3<t> &v) const { return Vec3<t>(x - v.x, y - v.y, z - v.z); }
