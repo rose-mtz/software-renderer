@@ -72,3 +72,85 @@ void blit_window(Vec3f *pixels)
     SDL_BlitSurface(window.draw_surface, NULL, SDL_GetWindowSurface(window.handle), NULL);
     SDL_UpdateWindowSurface(window.handle);
 }
+
+void poll_events()
+{
+    window.input.window.did_resize = false;
+    window.input.mouse.did_move = false;
+    window.input.mouse.left.prev_state = window.input.mouse.left.is_down;
+    window.input.mouse.right.prev_state = window.input.mouse.right.is_down;
+    window.input.keys[KEY_A].prev_state = window.input.keys[KEY_A].is_down;
+    window.input.keys[KEY_SPACE].prev_state = window.input.keys[KEY_SPACE].is_down;
+    window.input.keys[KEY_ENTER].prev_state = window.input.keys[KEY_ENTER].is_down;
+
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
+    {
+        switch (event.type)
+        {
+            case SDL_EVENT_QUIT:
+                window.input.quit = true;
+                break;
+            case SDL_EVENT_WINDOW_RESIZED:
+                window.input.window.did_resize = true;
+                window.input.window.new_width = event.window.data1;
+                window.input.window.new_height = event.window.data2;
+                break;
+            case SDL_EVENT_MOUSE_MOTION:
+                window.input.mouse.did_move = true;
+                window.input.mouse.pos.x = event.motion.x;
+                window.input.mouse.pos.y = event.motion.y;
+                break;
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                switch (event.button.button)
+                {
+                    case SDL_BUTTON_LEFT:
+                        window.input.mouse.left.is_down = false;
+                        break;
+                    case SDL_BUTTON_RIGHT:
+                        window.input.mouse.right.is_down = false;
+                        break;
+                }
+                break;
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                switch (event.button.button)
+                {
+                    case SDL_BUTTON_LEFT:
+                        window.input.mouse.left.is_down = true;
+                        break;
+                    case SDL_BUTTON_RIGHT:
+                        window.input.mouse.right.is_down = true;
+                        break;
+                }
+                break;
+            case SDL_EVENT_KEY_DOWN:
+                switch (event.key.key)
+                {
+                    case SDLK_A:
+                        window.input.keys[KEY_A].is_down = true;
+                        break;
+                    case SDLK_SPACE:
+                        window.input.keys[KEY_SPACE].is_down = true;
+                        break;
+                    case SDLK_RETURN:
+                        window.input.keys[KEY_ENTER].is_down = true;
+                        break;
+                }
+                break;
+            case SDL_EVENT_KEY_UP:
+                switch (event.key.key)
+                {
+                    case SDLK_A:
+                        window.input.keys[KEY_A].is_down = false;
+                        break;
+                    case SDLK_SPACE:
+                        window.input.keys[KEY_SPACE].is_down = false;
+                        break;
+                    case SDLK_RETURN:
+                        window.input.keys[KEY_ENTER].is_down = false;
+                        break;
+                }
+                break;
+        }
+    }
+}
