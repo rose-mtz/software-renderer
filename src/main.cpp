@@ -9,6 +9,7 @@
 #include "Rasterize.h"
 #include "Model.h"
 #include "Mat.h"
+#include "Camera.h"
 
 struct Actions
 {
@@ -37,8 +38,8 @@ struct ProgramState
     Vec2f mouse_pos;
     std::vector<std::vector<Vertex>> list_of_user_polys = std::vector<std::vector<Vertex>>(1);
     float theta = 0.0f;
-
     Model* model = nullptr;
+    Camera camera;
 } state;
 
 
@@ -70,11 +71,19 @@ void init()
     state.screen_res_buffer = new Buffer();
     state.low_res_buffer = new Buffer();
 
-    init_window(640, 480);    
-    resize_buffer(state.screen_res_buffer, 640, 480);
-    resize_buffer(state.low_res_buffer, 160, 120);
+    int width = 640, height = 480;
+    int width_low_res = 160, height_low_res = 120;
+    init_window(width, height);
+    resize_buffer(state.screen_res_buffer, width, height);
+    resize_buffer(state.low_res_buffer, width_low_res, height_low_res);
 
     state.model = new Model("obj/square.obj");
+
+    state.camera.up = Vec3f(0.0f, 1.0f, 0.0f);
+    state.camera.look_at = Vec3f(0.0f, 0.0f, 0.0f);
+    state.camera.pos = Vec3f(0.0f, 0.0f, 5.0f);
+    state.camera.aspect_ratio = ((float) width_low_res) / ((float) height_low_res);
+    state.camera.near = 1.0f;
 }
 
 void handle_time()
@@ -102,41 +111,21 @@ void handle_events()
 
 void render_scene(Buffer* frame_buffer)
 {
+    Vec3f scale_factor (frame_buffer->width/state.camera.aspect_ratio/2.0f, frame_buffer->height/2.0f, 0.0f);
     Mat4x4f local_to_world = Mat4x4f::scale(Vec3f(5.0f));
-    state.theta += state.dt;
+    Mat4x4f world_to_camera = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up);
+    Mat4x4f projected_to_device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
 
-    Vec3f camera_pos (3.0f * sin(state.theta * 0.001f), 0.0f, 3.0f * cos(state.theta * 0.001f));
-    Vec3f camera_look_at (0.0f);
-    Vec3f camera_up (0.0f, 1.0f, 0.0f);
-    Mat4x4f world_to_camera = Mat4x4f::look_at(camera_pos, camera_look_at, camera_up);
-
-    struct VirtualScreen
-    {
-        float width;
-        float height;
-        float near = 5.0f; // assume 1 for now
-    } virtual_screen;
-
-    // Should be integer math?
-    // Only integer size virtual screen?
-    float aspect_ratio = state.low_res_buffer->width / state.low_res_buffer->height;
-    virtual_screen.height = 8.0f;
-    virtual_screen.width = virtual_screen.height * aspect_ratio;
-
-    // Assumes camera is orthonormal basis
-    Vec3f scale_factor (state.low_res_buffer->width/virtual_screen.width/2.0f, state.low_res_buffer->height/virtual_screen.height/2.0f, 0.0f);
-    Mat4x4f camera_to_device = Mat4x4f::translation(Vec3f(state.low_res_buffer->width/2.0f, state.low_res_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
-    Vec3f face_color (1.0f, 0.0f, 0.0f);
     std::vector<Vertex> polygon;
-
+    Vec3f face_color (1.0f, 0.0f, 0.0f);
     std::vector<int> face = state.model->get_face(0); // 1 face
     for (int i = 0; i < face.size(); i++)
     {
         Vec3f local_pos = state.model->get_local_position(face[i]);
         Vec3f world_pos = local_to_world * Vec4f(local_pos, 1.0f);
-        Vec3f view_pos = world_to_camera * Vec4f(world_pos, 1.0f);
-        Vec3f projected_pos = Vec3f(view_pos.x / fabs(view_pos.z), view_pos.y / fabs(view_pos.z), view_pos.z);
-        Vec3f device_pos = camera_to_device * Vec4f(projected_pos, 1.0f);
+        Vec3f view_pos  = world_to_camera * Vec4f(world_pos, 1.0f);
+        Vec3f projected_pos = Vec3f((view_pos.x / fabs(view_pos.z)) * state.camera.near, (view_pos.y / fabs(view_pos.z)) * state.camera.near, view_pos.z);
+        Vec3f device_pos = projected_to_device * Vec4f(projected_pos, 1.0f);
 
         Vertex vert;
         vert.device = Vec2f(device_pos.x, device_pos.y);
@@ -184,19 +173,21 @@ void draw()
 {
     Vec3f CLEAR_COLOR (0.0f, 0.0f, 0.0f);
 
-    if ((state.low_res_buffer->width == state.screen_res_buffer->width) && (state.low_res_buffer->height == state.screen_res_buffer->height))
-    {
-        clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
-        render_scene(state.screen_res_buffer);
-    }
-    else
-    {
-        clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
-        clear_buffer(CLEAR_COLOR, state.low_res_buffer);
-        render_scene(state.low_res_buffer);
-        blit_buffer(state.low_res_buffer, state.screen_res_buffer);
-    }
+    // if ((state.low_res_buffer->width == state.screen_res_buffer->width) && (state.low_res_buffer->height == state.screen_res_buffer->height))
+    // {
+    //     clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
+    //     render_scene(state.screen_res_buffer);
+    // }
+    // else
+    // {
+    //     clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
+    //     clear_buffer(CLEAR_COLOR, state.low_res_buffer);
+    //     render_scene(state.low_res_buffer);
+    //     blit_buffer(state.low_res_buffer, state.screen_res_buffer);
+    // }
 
+    clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
+    render_scene(state.screen_res_buffer);
     blit_window(state.screen_res_buffer->pixels);
 }
 
