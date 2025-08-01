@@ -173,15 +173,15 @@ void render_scene(Buffer* frame_buffer)
                 v0.color = Vec3f(0.0f);
                 v1.color = Vec3f(0.0f);
 
-                // rasterize_line(v0, v1, 4, frame_buffer);
+                // rasterize_line(v0, v1, 5, frame_buffer);
             }
 
             for (int p = 0; p < vertices.size(); p++)
             {
                 Vertex point = vertices[p];
-                point.color = Vec3f(0.5f);
+                point.color = Vec3f(1.0f, 1.0f, 1.0f);
 
-                // rasterize_point(point, 7, frame_buffer);
+                // rasterize_point(point, 8, frame_buffer);
             }
         }
     }
@@ -198,8 +198,6 @@ void draw()
     }
     else
     {
-        // NOTE: a high res render buffer actually won't make image more aliased due sampling method being closest 
-        //          and not something like bi-linear blend, that is something to be done soon
         clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
         clear_buffer(CLEAR_COLOR, state.render_buffer);
         render_scene(state.render_buffer);
