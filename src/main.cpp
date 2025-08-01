@@ -10,6 +10,7 @@
 #include "Model.h"
 #include "Mat.h"
 #include "Camera.h"
+#include "Object.h"
 
 struct Actions
 {
@@ -31,6 +32,7 @@ struct ProgramState
     Vec2f mouse_pos;
     Model* model = nullptr;
     Camera camera;
+    std::vector<Object> objects;
 
     int resolution_scale_index = 3;
 } state;
@@ -74,6 +76,40 @@ void init()
     state.camera.pos = Vec3f(0.0f, 0.0f, 5.0f);
     state.camera.aspect_ratio = ((float) width) / ((float) height);
     state.camera.near = 1.0f;
+
+    // Cube
+    Object top_face, front_face, bottom_face, back_face, left_face, right_face;
+    top_face.world_pos = Vec3f(0.0f, 0.5f, 0.0f);
+    top_face.orientation = Vec3f(radians(-90), 0.0f, 0.0f);
+    front_face.world_pos = Vec3f(0.0f, 0.0f, 0.5f);
+    back_face.world_pos = Vec3f(0.0f, 0.0f, -0.5f);
+    bottom_face.world_pos = Vec3f(0.0f, -0.5f, 0.0f);
+    bottom_face.orientation = Vec3f(radians(90), 0.0f, 0.0f);
+    left_face.world_pos = Vec3f(-0.5f, 0.0f, 0.0f);
+    left_face.orientation = Vec3f(0.0f, radians(-90), 0.0f);
+    right_face.world_pos = Vec3f(0.5f, 0.0f, 0.0f);
+    right_face.orientation = Vec3f(0.0f, radians(90), 0.0f);
+
+    top_face.model = state.model;
+    bottom_face.model = state.model;
+    left_face.model = state.model;
+    right_face.model = state.model;
+    front_face.model = state.model;
+    back_face.model = state.model;
+
+    top_face.color    = Vec3f(1.0f, 0.0f, 0.0f);
+    bottom_face.color = Vec3f(0.0f, 1.0f, 0.0f);
+    left_face.color   = Vec3f(0.0f, 0.0f, 1.0f);
+    right_face.color  = Vec3f(1.0f, 1.0f, 1.0f);
+    front_face.color  = Vec3f(1.0f, 1.0f, 0.0f);
+    back_face.color   = Vec3f(1.0f, 0.0f, 1.0f);
+
+    state.objects.push_back(top_face);
+    state.objects.push_back(bottom_face);
+    state.objects.push_back(left_face);
+    state.objects.push_back(right_face);
+    state.objects.push_back(front_face);
+    state.objects.push_back(back_face);
 }
 
 void handle_time()
@@ -96,31 +132,39 @@ void handle_events()
 
 void render_scene(Buffer* frame_buffer)
 {
+    Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up);
     Vec3f scale_factor (frame_buffer->width/state.camera.aspect_ratio/2.0f, frame_buffer->height/2.0f, 0.0f);
-    Mat4x4f local_to_world = Mat4x4f::scale(Vec3f(5.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001);
-    Mat4x4f world_to_camera = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up);
-    Mat4x4f projected_to_device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
+    Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
+    Mat4x4f world = Mat4x4f::scale(Vec3f(2.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f);
 
-    std::vector<Vertex> polygon;
-    Vec3f face_color (1.0f, 0.0f, 0.0f);
-    std::vector<int> face = state.model->get_face(0); // 1 face
-    for (int i = 0; i < face.size(); i++)
+    for (int i = 0; i < state.objects.size(); i++)
     {
-        Vec3f local_pos = state.model->get_local_position(face[i]);
-        Vec3f world_pos = local_to_world * Vec4f(local_pos, 1.0f);
-        Vec3f view_pos  = world_to_camera * Vec4f(world_pos, 1.0f);
-        Vec3f projected_pos = Vec3f((view_pos.x / fabs(view_pos.z)) * state.camera.near, (view_pos.y / fabs(view_pos.z)) * state.camera.near, view_pos.z);
-        Vec3f device_pos = projected_to_device * Vec4f(projected_pos, 1.0f);
+        Object& obj = state.objects[i];
+        Mat4x4f local = Mat4x4f::translation(obj.world_pos) * Mat4x4f::rotation_x(obj.orientation.x) * Mat4x4f::rotation_y(obj.orientation.y) * Mat4x4f::rotation_z(obj.orientation.z);
 
-        Vertex vert;
-        vert.device = Vec2f(device_pos.x, device_pos.y);
-        vert.depth = device_pos.z;
-        vert.color = face_color;
+        for (int f = 0; f < obj.model->get_face_count(); f++)
+        {
+            std::vector<int> face = obj.model->get_face(f);
+            std::vector<Vertex> vertices;
+            for (int v = 0; v < face.size(); v++)
+            {
+                Vec3f local_pos  = obj.model->get_local_position(face[v]);
+                Vec3f world_pos  = world * local * Vec4f(local_pos, 1.0f);
+                Vec3f view_pos   = camera * Vec4f(world_pos, 1.0f);
+                Vec3f projected_pos = Vec3f((view_pos.x / fabs(view_pos.z)) * state.camera.near, (view_pos.y / fabs(view_pos.z)) * state.camera.near, view_pos.z);
+                Vec3f device_pos = device * Vec4f(projected_pos, 1.0f);
 
-        polygon.push_back(vert);
+                Vertex vertex;
+                vertex.device = device_pos.xy();
+                vertex.depth = device_pos.z;
+                vertex.color = obj.color;
+
+                vertices.push_back(vertex);
+            }
+
+            rasterize_polygon(vertices, frame_buffer);
+        }
     }
-
-    rasterize_polygon(polygon, frame_buffer);
 }
 
 void draw()
