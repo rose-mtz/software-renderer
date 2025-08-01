@@ -1,6 +1,6 @@
 #pragma once
 #include "Vec.h"
-#include "Model.h"
+#include "Mesh.h"
 
 struct Object
 {
@@ -10,5 +10,5 @@ struct Object
     // Temporary
     Vec3f color;
 
-    Model* model;
+    Mesh* mesh;
 };

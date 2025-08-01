@@ -3,9 +3,9 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include "Model.h"
+#include "Mesh.h"
 
-Model::Model(const char *filename) : local_positions(), faces()
+Mesh::Mesh(const char *filename) : local_positions(), faces()
 {
     std::ifstream in;
     in.open (filename, std::ifstream::in);
@@ -43,17 +43,17 @@ Model::Model(const char *filename) : local_positions(), faces()
     }
 }
 
-int Model::get_face_count()
+int Mesh::get_face_count()
 {
     return faces.size();
 }
 
-Vec3f Model::get_local_position(int i)
+Vec3f Mesh::get_local_position(int i)
 {
     return local_positions[i];
 }
 
-std::vector<int> Model::get_face(int idx)
+std::vector<int> Mesh::get_face(int idx)
 {
     return faces[idx];
 }

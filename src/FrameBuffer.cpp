@@ -1,6 +1,15 @@
 #include "FrameBuffer.h"
 #include <cassert>
 
+// Maps a point from one buffer to another
+Vec2f map_point(const Vec2f& point, Buffer* src, Buffer* target)
+{
+    float x_scale = ((float) target->width) / ((float) src->width);
+    float y_scale = ((float) target->height) / ((float) src->height);
+
+    return Vec2f(point.x * x_scale, point.y * y_scale);
+}
+
 // returns true if out-of-bounds
 bool is_out_of_bounds(const Vec2i& pixel, Buffer* buffer)
 {

@@ -23,4 +23,6 @@ void  resize_buffer(Buffer* buffer, int width, int height);
 void  blit_buffer(Buffer* src, Buffer* target);
 void  set_fragment(const Fragment& frag, Buffer* buffer);
 
+Vec2f map_point(const Vec2f& point, Buffer* src, Buffer* target);
+
 const float MAX_DEPTH = std::numeric_limits<float>::lowest();

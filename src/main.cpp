@@ -7,7 +7,7 @@
 #include "Window.h"
 #include "Vec.h"
 #include "Rasterize.h"
-#include "Model.h"
+#include "Mesh.h"
 #include "Mat.h"
 #include "Camera.h"
 #include "Object.h"
@@ -29,12 +29,12 @@ struct ProgramState
 
     Buffer* render_buffer = nullptr;
     Buffer* screen_res_buffer = nullptr;
+    int resolution_scale_index = 3;
+
     Vec2f mouse_pos;
-    Model* model = nullptr;
+    Mesh* square = nullptr;
     Camera camera;
     std::vector<Object> objects;
-
-    int resolution_scale_index = 3;
 } state;
 
 const int RESOLUTION_SCALERS_COUNT = 6;
@@ -52,7 +52,7 @@ int main()
 
     while (state.running)
     {
-        handle_time();
+        // handle_time();
         handle_events();
         update();
         draw();
@@ -61,15 +61,13 @@ int main()
 
 void init()
 {
-    state.screen_res_buffer = new Buffer();
-    state.render_buffer = new Buffer();
-
     int width = 640, height = 480;
     init_window(width, height);
-    resize_buffer(state.screen_res_buffer, width, height);
-    resize_buffer(state.render_buffer, width, height);
 
-    state.model = new Model("obj/square.obj");
+    state.screen_res_buffer = new Buffer();
+    resize_buffer(state.screen_res_buffer, width, height);
+    state.render_buffer = new Buffer();
+    resize_buffer(state.render_buffer, width, height);
 
     state.camera.up = Vec3f(0.0f, 1.0f, 0.0f);
     state.camera.look_at = Vec3f(0.0f, 0.0f, 0.0f);
@@ -77,7 +75,8 @@ void init()
     state.camera.aspect_ratio = ((float) width) / ((float) height);
     state.camera.near = 1.0f;
 
-    // Cube
+    // TEMPORARY: cube ----------------------------------------------------------------------
+
     Object top_face, front_face, bottom_face, back_face, left_face, right_face;
     top_face.world_pos = Vec3f(0.0f, 0.5f, 0.0f);
     top_face.orientation = Vec3f(radians(-90), 0.0f, 0.0f);
@@ -90,12 +89,13 @@ void init()
     right_face.world_pos = Vec3f(0.5f, 0.0f, 0.0f);
     right_face.orientation = Vec3f(0.0f, radians(90), 0.0f);
 
-    top_face.model = state.model;
-    bottom_face.model = state.model;
-    left_face.model = state.model;
-    right_face.model = state.model;
-    front_face.model = state.model;
-    back_face.model = state.model;
+    state.square = new Mesh("obj/square.obj");
+    top_face.mesh = state.square;
+    bottom_face.mesh = state.square;
+    left_face.mesh = state.square;
+    right_face.mesh = state.square;
+    front_face.mesh = state.square;
+    back_face.mesh = state.square;
 
     top_face.color    = Vec3f(1.0f, 0.0f, 0.0f);
     bottom_face.color = Vec3f(0.0f, 1.0f, 0.0f);
@@ -114,16 +114,20 @@ void init()
 
 void handle_time()
 {
+    // QUESTION: is this in wall clock or CPU ticks (time program is running, doesn't include blocked IO time)
+    // COMMENT: i do not understand this time code
+
     auto current_frame_start = std::chrono::high_resolution_clock::now();
     state.dt = std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(current_frame_start - state.last_frame_start).count();
     state.last_frame_start = current_frame_start;
-    // std::cout << state.dt << std::endl;
+    std::cout << state.dt << std::endl;
 }
 
 void handle_events()
 {
     poll_events();
 
+    // Map user input to commands
     input_actions.cycle_resolution = (window.input.keys[KEY_ENTER].is_down && !window.input.keys[KEY_ENTER].prev_state);
     input_actions.update_mouse_pos = (window.input.mouse.did_move);
     input_actions.exit_program = (window.input.quit);
@@ -143,13 +147,13 @@ void render_scene(Buffer* frame_buffer)
         Object& obj = state.objects[i];
         Mat4x4f local = Mat4x4f::translation(obj.world_pos) * Mat4x4f::rotation_x(obj.orientation.x) * Mat4x4f::rotation_y(obj.orientation.y) * Mat4x4f::rotation_z(obj.orientation.z);
 
-        for (int f = 0; f < obj.model->get_face_count(); f++)
+        for (int f = 0; f < obj.mesh->get_face_count(); f++)
         {
-            std::vector<int> face = obj.model->get_face(f);
+            std::vector<int> face = obj.mesh->get_face(f);
             std::vector<Vertex> vertices;
             for (int v = 0; v < face.size(); v++)
             {
-                Vec3f local_pos  = obj.model->get_local_position(face[v]);
+                Vec3f local_pos  = obj.mesh->get_local_position(face[v]);
                 Vec3f world_pos  = world * local * Vec4f(local_pos, 1.0f);
                 Vec3f view_pos   = camera * Vec4f(world_pos, 1.0f);
                 Vec3f projected_pos = Vec3f((view_pos.x / fabs(view_pos.z)) * state.camera.near, (view_pos.y / fabs(view_pos.z)) * state.camera.near, view_pos.z);
@@ -224,11 +228,7 @@ void update()
 
     if (input_actions.update_mouse_pos)
     {
-        float x_basis_scale = ((float) state.render_buffer->width)  / state.screen_res_buffer->width;
-        float y_basis_scale = ((float) state.render_buffer->height) / state.screen_res_buffer->height;
-        float y_pos_flipped = (window.height - window.input.mouse.pos.y);
-        state.mouse_pos.x = window.input.mouse.pos.x * x_basis_scale;
-        state.mouse_pos.y = y_pos_flipped * y_basis_scale;
+        state.mouse_pos = map_point(Vec2f(window.input.mouse.pos.x, window.height - window.input.mouse.pos.y), state.screen_res_buffer, state.render_buffer);
     }
 
     if (input_actions.cycle_resolution)
