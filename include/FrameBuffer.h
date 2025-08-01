@@ -5,6 +5,7 @@ struct Buffer
 {
     int width, height;
     Vec3f* pixels = nullptr;
+    float* depth = nullptr;
 };
 
 struct Fragment

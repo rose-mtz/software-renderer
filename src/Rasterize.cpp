@@ -6,6 +6,10 @@
 
 void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 {
+    // BUG: radius is device-resolution dependent
+    //      high-res buffers will have small points
+    //      low-res buffers will have big points
+
     /**
      * PROCESS:
      * 
@@ -49,6 +53,7 @@ void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
             Fragment frag;
             frag.color = v.color;
             frag.pixel = Vec2i(cur_column, cur_scanline);
+            frag.depth = v.depth;
             set_fragment(frag, buffer);
 
             cur_column++;
@@ -60,6 +65,10 @@ void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 
 void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffer)
 {
+    // BUG: width is device-resolution dependent
+    //      high-res buffers will have small lines
+    //      low-res buffers will have big lines
+
     /**
      * PROCESS:
      * 
@@ -113,6 +122,7 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
 
             Fragment frag;
             frag.color = clampedVec3f(edge.v.color, 0.0f, 1.0f);
+            frag.depth = edge.v.depth;
             if (steep_slope) 
             {
                 frag.pixel = Vec2i(shifted_scanline, cur_column);
@@ -216,6 +226,7 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
             Fragment frag;
             frag.color = clampedVec3f(scanline_edge.v.color, 0.0f, 1.0f);
             frag.pixel = Vec2i(cur_pixel.x, cur_pixel.y);
+            frag.depth = scanline_edge.v.depth;
             set_fragment(frag, buffer);
 
             cur_pixel.x++;

@@ -45,10 +45,18 @@ Vec3f bilinear_sample(Vec2f point, Buffer* buffer)
 void resize_buffer(Buffer* buffer, int width, int height)
 {
     if (!buffer->pixels) delete[] buffer->pixels;
+    if (!buffer->depth) delete[] buffer->depth;
 
     buffer->pixels = new Vec3f[width * height];
+    buffer->depth = new float[width * height];
     buffer->width = width;
     buffer->height = height;
+
+    // Temporary
+    for (int i = 0; i < buffer->width * buffer->height; i++)
+    {
+        buffer->depth[i] = -1000000.0f;
+    }
 }
 
 void clear_buffer(Vec3f color, Buffer* buffer)
@@ -56,11 +64,17 @@ void clear_buffer(Vec3f color, Buffer* buffer)
     for (int i = 0; i < buffer->width * buffer->height; i++)
     {
         buffer->pixels[i] = color;
+        buffer->depth[i] = -1000000.0f;
     }
 }
 
 void blit_buffer(Buffer* src, Buffer* target) // , float percent_width, float precent_height, Vec2f offset)
 {
+    // Temporary:
+    // I only ever blit on to the screen buffer.
+    // And the screen doesn't need depth.
+    // Only the render buffer does.
+
     // 100% width
     // 100% height
     // offset is (0,0)
@@ -85,9 +99,10 @@ void blit_buffer(Buffer* src, Buffer* target) // , float percent_width, float pr
 
 void set_fragment(const Fragment& frag, Buffer* buffer)
 {
-    if (!is_out_of_bounds(frag.pixel, buffer))
+    if (!is_out_of_bounds(frag.pixel, buffer) && buffer->depth[frag.pixel.y * buffer->width + frag.pixel.x] < frag.depth)
     {
         // No depth check for now.
         buffer->pixels[frag.pixel.y * buffer->width + frag.pixel.x] = frag.color;
+        buffer->depth[frag.pixel.y * buffer->width + frag.pixel.x] = frag.depth;
     }
 }

@@ -117,7 +117,7 @@ void handle_time()
     auto current_frame_start = std::chrono::high_resolution_clock::now();
     state.dt = std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(current_frame_start - state.last_frame_start).count();
     state.last_frame_start = current_frame_start;
-    std::cout << state.dt << std::endl;
+    // std::cout << state.dt << std::endl;
 }
 
 void handle_events()
@@ -132,10 +132,11 @@ void handle_events()
 
 void render_scene(Buffer* frame_buffer)
 {
+    state.camera.pos.y = 3 * sin(SDL_GetTicks() * 0.001);
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up);
-    Vec3f scale_factor (frame_buffer->width/state.camera.aspect_ratio/2.0f, frame_buffer->height/2.0f, 0.0f);
+    Vec3f scale_factor (frame_buffer->width/state.camera.aspect_ratio/2.0f, frame_buffer->height/2.0f, 1.0f);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
-    Mat4x4f world = Mat4x4f::scale(Vec3f(2.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f);
+    Mat4x4f world = Mat4x4f::scale(Vec3f(3.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f);
 
     for (int i = 0; i < state.objects.size(); i++)
     {
@@ -163,6 +164,25 @@ void render_scene(Buffer* frame_buffer)
             }
 
             rasterize_polygon(vertices, frame_buffer);
+
+            for (int e = 0; e < vertices.size(); e++)
+            {
+                Vertex v0 = vertices[e];
+                Vertex v1 = vertices[(e + 1) % vertices.size()];
+
+                v0.color = Vec3f(0.0f);
+                v1.color = Vec3f(0.0f);
+
+                // rasterize_line(v0, v1, 4, frame_buffer);
+            }
+
+            for (int p = 0; p < vertices.size(); p++)
+            {
+                Vertex point = vertices[p];
+                point.color = Vec3f(0.5f);
+
+                // rasterize_point(point, 7, frame_buffer);
+            }
         }
     }
 }
