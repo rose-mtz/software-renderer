@@ -85,6 +85,10 @@ void blit_buffer(Buffer* src, Buffer* target)
     // TODO: let user pick offset to blitz on target
     //          and also % width & % height to blitz
 
+    // CORRECTNESS: it seems, theoretically, that if the src and targe resolutions
+    //              difference is too high then bilinear sampling may be
+    //              the wrong sampling strategy
+
     float x_basis_scale = ((float) src->width) / ((float) target->width);
     float y_basis_scale = ((float) src->height) / ((float) target->height);
 
