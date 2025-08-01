@@ -7,6 +7,15 @@ bool is_out_of_bounds(const Vec2i& pixel, Buffer* buffer)
     return (pixel.x < 0 || pixel.x >= buffer->width) || (pixel.y < 0 || pixel.y >= buffer->height);
 }
 
+// true if is closer
+bool is_hidden(const Vec2i& pixel, float depth, Buffer* buffer)
+{
+    assert(pixel.x >= 0 && pixel.x < buffer->width);
+    assert(pixel.y >= 0 && pixel.y < buffer->height);
+
+    return buffer->depth[pixel.y * buffer->width + pixel.x] > depth;
+}
+
 // Does not check out-of-bounds input
 void set_pixel(int x, int y, Vec3f value, Buffer* buffer)
 {
@@ -46,9 +55,9 @@ Vec3f bilinear_sample(Vec2f point, Buffer* buffer)
     Vec3f bottom_left  = get_pixel_clamped(point_rounded.x - 1, point_rounded.y - 1, buffer);
     Vec3f bottom_right = get_pixel_clamped(point_rounded.x,     point_rounded.y - 1, buffer);
 
-    Vec3f top_interpolation = lerpVec3f(top_left, top_right, 0.5f);
+    Vec3f top_interpolation    = lerpVec3f(top_left, top_right, 0.5f);
     Vec3f bottom_interpolation = lerpVec3f(bottom_left, bottom_right, 0.5f);
-    Vec3f cross_interpolation = lerpVec3f(top_interpolation, bottom_interpolation, 0.5f);
+    Vec3f cross_interpolation  = lerpVec3f(top_interpolation, bottom_interpolation, 0.5f);
 
     return cross_interpolation;
 }
@@ -63,19 +72,19 @@ void resize_buffer(Buffer* buffer, int width, int height)
     buffer->width = width;
     buffer->height = height;
 
-    // Temporary
     for (int i = 0; i < buffer->width * buffer->height; i++)
     {
-        buffer->depth[i] = -1000000.0f;
+        buffer->depth[i] = MAX_DEPTH;
     }
 }
 
+// Clears color and depth
 void clear_buffer(Vec3f color, Buffer* buffer)
 {
     for (int i = 0; i < buffer->width * buffer->height; i++)
     {
         buffer->pixels[i] = color;
-        buffer->depth[i] = -1000000.0f;
+        buffer->depth[i] = MAX_DEPTH;
     }
 }
 
@@ -105,9 +114,8 @@ void blit_buffer(Buffer* src, Buffer* target)
 
 void set_fragment(const Fragment& frag, Buffer* buffer)
 {
-    if (!is_out_of_bounds(frag.pixel, buffer) && buffer->depth[frag.pixel.y * buffer->width + frag.pixel.x] < frag.depth)
+    if (!is_out_of_bounds(frag.pixel, buffer) && !is_hidden(frag.pixel, frag.depth, buffer))
     {
-        // No depth check for now.
         buffer->pixels[frag.pixel.y * buffer->width + frag.pixel.x] = frag.color;
         buffer->depth[frag.pixel.y * buffer->width + frag.pixel.x] = frag.depth;
     }

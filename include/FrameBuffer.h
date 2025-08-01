@@ -1,4 +1,5 @@
 #pragma once
+#include <limits>
 #include "Vec.h"
 
 struct Buffer
@@ -21,3 +22,5 @@ void  clear_buffer(Vec3f color, Buffer* buffer);
 void  resize_buffer(Buffer* buffer, int width, int height);
 void  blit_buffer(Buffer* src, Buffer* target);
 void  set_fragment(const Fragment& frag, Buffer* buffer);
+
+const float MAX_DEPTH = std::numeric_limits<float>::lowest();
