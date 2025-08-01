@@ -24,6 +24,16 @@ Vec3f get_pixel(int x, int y, Buffer* buffer)
     return buffer->pixels[y * buffer->width + x];
 }
 
+int clampInt(int i, int min, int max)
+{
+    return i > max ? max : i < min ? min : i;
+}
+
+Vec3f get_pixel_clamped(int x, int y, Buffer* buffer)
+{
+    return get_pixel(clampInt(x, 0, buffer->width - 1), clampInt(y, 0, buffer->height - 1), buffer);
+}
+
 Vec3f bilinear_sample(Vec2f point, Buffer* buffer)
 {
     assert(point.x >= 0.0f && point.x <= (float) buffer->width);
@@ -31,15 +41,16 @@ Vec3f bilinear_sample(Vec2f point, Buffer* buffer)
 
     Vec2i point_rounded (round(point.x), round(point.y));
 
-    Vec3f top_left = get_pixel(point_rounded.x - 1, point_rounded.y, buffer);
-    Vec3f top_right = get_pixel(point_rounded.x, point_rounded.y, buffer);
+    Vec3f top_left     = get_pixel_clamped(point_rounded.x - 1, point_rounded.y,     buffer);
+    Vec3f top_right    = get_pixel_clamped(point_rounded.x,     point_rounded.y,     buffer);
+    Vec3f bottom_left  = get_pixel_clamped(point_rounded.x - 1, point_rounded.y - 1, buffer);
+    Vec3f bottom_right = get_pixel_clamped(point_rounded.x,     point_rounded.y - 1, buffer);
 
-    Vec3f bottom_left = get_pixel(point_rounded.x - 1, point_rounded.y - 1, buffer);
-    Vec3f bottom_right = get_pixel(point_rounded.x, point_rounded.y - 1, buffer);
+    Vec3f top_interpolation = lerpVec3f(top_left, top_right, 0.5f);
+    Vec3f bottom_interpolation = lerpVec3f(bottom_left, bottom_right, 0.5f);
+    Vec3f cross_interpolation = lerpVec3f(top_interpolation, bottom_interpolation, 0.5f);
 
-    // TODO: to finish
-
-    return Vec3f(1.0f);
+    return cross_interpolation;
 }
 
 void resize_buffer(Buffer* buffer, int width, int height)
@@ -68,16 +79,11 @@ void clear_buffer(Vec3f color, Buffer* buffer)
     }
 }
 
-void blit_buffer(Buffer* src, Buffer* target) // , float percent_width, float precent_height, Vec2f offset)
+// Only blitz color
+void blit_buffer(Buffer* src, Buffer* target)
 {
-    // Temporary:
-    // I only ever blit on to the screen buffer.
-    // And the screen doesn't need depth.
-    // Only the render buffer does.
-
-    // 100% width
-    // 100% height
-    // offset is (0,0)
+    // TODO: let user pick offset to blitz on target
+    //          and also % width & % height to blitz
 
     float x_basis_scale = ((float) src->width) / ((float) target->width);
     float y_basis_scale = ((float) src->height) / ((float) target->height);
@@ -86,12 +92,8 @@ void blit_buffer(Buffer* src, Buffer* target) // , float percent_width, float pr
     {
         for (int x = 0; x < target->width; x++)
         {
-            int x_src = (x + 0.5f) * x_basis_scale;
-            int y_src = (y + 0.5f) * y_basis_scale;
-
-            // TODO: better sampling method
-        
-            Vec3f sample = get_pixel(x_src, y_src, src);
+            Vec2f sample_point ((x + 0.5f) * x_basis_scale, (y + 0.5f) * y_basis_scale);
+            Vec3f sample = bilinear_sample(sample_point, src);
             set_pixel(x,y, sample, target);
         }
     }
