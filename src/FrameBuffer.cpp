@@ -24,6 +24,24 @@ Vec3f get_pixel(int x, int y, Buffer* buffer)
     return buffer->pixels[y * buffer->width + x];
 }
 
+Vec3f bilinear_sample(Vec2f point, Buffer* buffer)
+{
+    assert(point.x >= 0.0f && point.x <= (float) buffer->width);
+    assert(point.y >= 0.0f && point.y <= (float) buffer->height);
+
+    Vec2i point_rounded (round(point.x), round(point.y));
+
+    Vec3f top_left = get_pixel(point_rounded.x - 1, point_rounded.y, buffer);
+    Vec3f top_right = get_pixel(point_rounded.x, point_rounded.y, buffer);
+
+    Vec3f bottom_left = get_pixel(point_rounded.x - 1, point_rounded.y - 1, buffer);
+    Vec3f bottom_right = get_pixel(point_rounded.x, point_rounded.y - 1, buffer);
+
+    // TODO: to finish
+
+    return Vec3f(1.0f);
+}
+
 void resize_buffer(Buffer* buffer, int width, int height)
 {
     if (!buffer->pixels) delete[] buffer->pixels;
@@ -57,6 +75,8 @@ void blit_buffer(Buffer* src, Buffer* target) // , float percent_width, float pr
             int x_src = (x + 0.5f) * x_basis_scale;
             int y_src = (y + 0.5f) * y_basis_scale;
 
+            // TODO: better sampling method
+        
             Vec3f sample = get_pixel(x_src, y_src, src);
             set_pixel(x,y, sample, target);
         }

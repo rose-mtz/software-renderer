@@ -113,3 +113,4 @@ template <class t> std::ostream& operator<<(std::ostream& s, Vec4<t>& v) {
 // Utility functions
 Vec3f clampedVec3f(const Vec3f& v, float min, float max);
 Vec2f clampedVec2f(const Vec2f& v, float min, float max);
+Vec3f lerpVec3f(const Vec3f& a, const Vec3f& b, float t);

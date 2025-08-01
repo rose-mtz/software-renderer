@@ -79,9 +79,11 @@ void poll_events()
     window.input.mouse.did_move = false;
     window.input.mouse.left.prev_state = window.input.mouse.left.is_down;
     window.input.mouse.right.prev_state = window.input.mouse.right.is_down;
-    window.input.keys[KEY_A].prev_state = window.input.keys[KEY_A].is_down;
-    window.input.keys[KEY_SPACE].prev_state = window.input.keys[KEY_SPACE].is_down;
-    window.input.keys[KEY_ENTER].prev_state = window.input.keys[KEY_ENTER].is_down;
+
+    for (int i = 0; i < KEY_COUNT; i++)
+    {
+        window.input.keys[(KEY_CODES) i].prev_state = window.input.keys[(KEY_CODES) i].is_down;
+    }
 
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -135,6 +137,12 @@ void poll_events()
                     case SDLK_RETURN:
                         window.input.keys[KEY_ENTER].is_down = true;
                         break;
+                    case SDLK_UP:
+                        window.input.keys[KEY_UP].is_down = true;
+                        break;
+                    case SDLK_DOWN:
+                        window.input.keys[KEY_DOWN].is_down = true;
+                        break;
                 }
                 break;
             case SDL_EVENT_KEY_UP:
@@ -148,6 +156,12 @@ void poll_events()
                         break;
                     case SDLK_RETURN:
                         window.input.keys[KEY_ENTER].is_down = false;
+                        break;
+                    case SDLK_UP:
+                        window.input.keys[KEY_UP].is_down = false;
+                        break;
+                    case SDLK_DOWN:
+                        window.input.keys[KEY_DOWN].is_down = false;
                         break;
                 }
                 break;
