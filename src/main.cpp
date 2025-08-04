@@ -75,7 +75,7 @@ void init()
     resize_buffer(state.render_buffer, width, height);
 
     state.camera.up = Vec3f(0.0f, 1.0f, 0.0f);
-    state.camera.look_at = Vec3f(0.0f, 0.0f, 0.0f);
+    state.camera.dir = Vec3f(0.0f, 0.0f, -1.0f);
     state.camera.pos = Vec3f(0.0f, 0.0f, 5.0f);
     state.camera.aspect_ratio = ((float) width) / ((float) height);
     state.camera.near = 1.0f;
@@ -148,10 +148,10 @@ void handle_events()
 
 void render_scene(Buffer* frame_buffer)
 {
-    Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up);
+    Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up);
     Vec3f scale_factor (frame_buffer->width/state.camera.aspect_ratio/2.0f, frame_buffer->height/2.0f, 1.0f);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
-    Mat4x4f world = Mat4x4f::scale(Vec3f(3.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f); // TEMPORARY: world should be assumed orthonormal & no rotation!
+    Mat4x4f world = Mat4x4f::scale(Vec3f(1.0f)); // Mat4x4f::scale(Vec3f(3.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f); // TEMPORARY: world should be assumed orthonormal & no rotation!
 
     for (int o = 0; o < state.objects.size(); o++)
     {
@@ -259,33 +259,33 @@ void update()
         state.camera.pitch += (-dy) * sensitivity_y;
         state.camera.pitch = state.camera.pitch > MAX_PITCH ? MAX_PITCH : state.camera.pitch < MIN_PITCH ? MIN_PITCH : state.camera.pitch;
 
-        Vec3f direction;
-        direction.x = sin(state.camera.pitch) * sin(state.camera.yaw);
-        direction.y = cos(state.camera.pitch);
-        direction.z = sin(state.camera.pitch) * cos(state.camera.yaw);
+        Vec3f look_at;
+        look_at.x = sin(state.camera.pitch) * sin(state.camera.yaw);
+        look_at.y = cos(state.camera.pitch);
+        look_at.z = sin(state.camera.pitch) * cos(state.camera.yaw);
 
-        state.camera.look_at = state.camera.pos + direction;
+        state.camera.dir = look_at;
     }
 
     float movement_sensitivity = 0.01f;
     if (input_actions.move_camera_forward)
     {
-        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up).truncated().transposed();
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(0.0f, 0.0f, -movement_sensitivity));
     }
     if (input_actions.move_camera_back)
     {
-        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up).truncated().transposed();
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(0.0f, 0.0f, movement_sensitivity));
     }
     if (input_actions.move_camera_left)
     {
-        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up).truncated().transposed();
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(-movement_sensitivity, 0.0f, 0.0f));
     }
     if (input_actions.move_camera_right)
     {
-        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up).truncated().transposed();
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(movement_sensitivity, 0.0f, 0.0f));
     }
 }
