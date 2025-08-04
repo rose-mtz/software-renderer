@@ -8,4 +8,6 @@ struct Camera
 
     float aspect_ratio; // width/height
     float near;
+
+    float pitch, yaw;
 };

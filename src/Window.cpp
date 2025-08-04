@@ -100,6 +100,8 @@ void poll_events()
                 break;
             case SDL_EVENT_MOUSE_MOTION:
                 window.input.mouse.did_move = true;
+                window.input.mouse.delta.x = (event.motion.x - window.input.mouse.pos.x);
+                window.input.mouse.delta.y = (event.motion.y - window.input.mouse.pos.y);
                 window.input.mouse.pos.x = event.motion.x;
                 window.input.mouse.pos.y = event.motion.y;
                 break;

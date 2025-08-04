@@ -20,6 +20,8 @@ struct MouseEvent
     Vec2f pos;
     bool did_move = false;
 
+    Vec2f delta; // delta from previous position
+    
     ButtonState left;
     ButtonState right;
 };

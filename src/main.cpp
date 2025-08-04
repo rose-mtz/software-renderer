@@ -17,6 +17,7 @@ struct Actions
     bool update_mouse_pos = false;
     bool exit_program = false;
     bool resize_window = false;
+    bool change_camera_orientation = false;
 } input_actions;
 
 struct ProgramState
@@ -74,6 +75,8 @@ void init()
     state.camera.pos = Vec3f(0.0f, 0.0f, 5.0f);
     state.camera.aspect_ratio = ((float) width) / ((float) height);
     state.camera.near = 1.0f;
+    state.camera.yaw = radians(180.0f);
+    state.camera.pitch = radians(90.0f);
 
     // TEMPORARY: cube ----------------------------------------------------------------------
 
@@ -132,11 +135,11 @@ void handle_events()
     input_actions.update_mouse_pos = (window.input.mouse.did_move);
     input_actions.exit_program = (window.input.quit);
     input_actions.resize_window = (window.input.window.did_resize);
+    input_actions.change_camera_orientation = (window.input.mouse.did_move && window.input.mouse.left.is_down);
 }
 
 void render_scene(Buffer* frame_buffer)
 {
-    state.camera.pos.y = 3 * sin(SDL_GetTicks() * 0.001);
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up);
     Vec3f scale_factor (frame_buffer->width/state.camera.aspect_ratio/2.0f, frame_buffer->height/2.0f, 1.0f);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
@@ -233,5 +236,26 @@ void update()
     {
         state.resolution_scale_index = (state.resolution_scale_index + 1) % RESOLUTION_SCALERS_COUNT;
         resize_buffer(state.render_buffer, state.screen_res_buffer->width * RESOLUTION_SCALERS[state.resolution_scale_index], state.screen_res_buffer->height * RESOLUTION_SCALERS[state.resolution_scale_index]);
+    }
+
+    if (input_actions.change_camera_orientation) // only pitch and yaw
+    {
+        float dx = window.input.mouse.delta.x;
+        float dy = window.input.mouse.delta.y;
+        float sensitivity_y = 0.0025f, sensitivity_x = 0.0025f;
+
+        float MIN_PITCH = radians(10.0f);
+        float MAX_PITCH = radians(170.0f);
+
+        state.camera.yaw += dx * sensitivity_x;
+        state.camera.pitch += (-dy) * sensitivity_y;
+        state.camera.pitch = state.camera.pitch > MAX_PITCH ? MAX_PITCH : state.camera.pitch < MIN_PITCH ? MIN_PITCH : state.camera.pitch;
+
+        Vec3f direction;
+        direction.x = sin(state.camera.pitch) * sin(state.camera.yaw);
+        direction.y = cos(state.camera.pitch);
+        direction.z = sin(state.camera.pitch) * cos(state.camera.yaw);
+
+        state.camera.look_at = state.camera.pos + direction;
     }
 }
