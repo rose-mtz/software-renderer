@@ -1,7 +1,7 @@
 #include <SDL3/SDL.h>
 #include "Vec.h"
 
-enum KEY_CODES { KEY_A = 0, KEY_SPACE, KEY_ENTER, KEY_UP, KEY_DOWN, KEY_COUNT };
+enum KEY_CODES { KEY_A = 0, KEY_SPACE, KEY_ENTER, KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT, KEY_COUNT };
 
 struct KeyState
 {

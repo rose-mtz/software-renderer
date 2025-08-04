@@ -145,6 +145,12 @@ void poll_events()
                     case SDLK_DOWN:
                         window.input.keys[KEY_DOWN].is_down = true;
                         break;
+                    case SDLK_LEFT:
+                        window.input.keys[KEY_LEFT].is_down = true;
+                        break;
+                    case SDLK_RIGHT:
+                        window.input.keys[KEY_RIGHT].is_down = true;
+                        break;
                 }
                 break;
             case SDL_EVENT_KEY_UP:
@@ -164,6 +170,12 @@ void poll_events()
                         break;
                     case SDLK_DOWN:
                         window.input.keys[KEY_DOWN].is_down = false;
+                        break;
+                    case SDLK_LEFT:
+                        window.input.keys[KEY_LEFT].is_down = false;
+                        break;
+                    case SDLK_RIGHT:
+                        window.input.keys[KEY_RIGHT].is_down = false;
                         break;
                 }
                 break;

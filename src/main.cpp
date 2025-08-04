@@ -18,6 +18,10 @@ struct Actions
     bool exit_program = false;
     bool resize_window = false;
     bool change_camera_orientation = false;
+    bool move_camera_forward = false;
+    bool move_camera_back = false;
+    bool move_camera_left = false;
+    bool move_camera_right = false;
 } input_actions;
 
 struct ProgramState
@@ -136,6 +140,10 @@ void handle_events()
     input_actions.exit_program = (window.input.quit);
     input_actions.resize_window = (window.input.window.did_resize);
     input_actions.change_camera_orientation = (window.input.mouse.did_move && window.input.mouse.left.is_down);
+    input_actions.move_camera_forward = window.input.keys[KEY_UP].is_down;
+    input_actions.move_camera_back = window.input.keys[KEY_DOWN].is_down;
+    input_actions.move_camera_left = window.input.keys[KEY_LEFT].is_down;
+    input_actions.move_camera_right = window.input.keys[KEY_RIGHT].is_down;
 }
 
 void render_scene(Buffer* frame_buffer)
@@ -143,7 +151,7 @@ void render_scene(Buffer* frame_buffer)
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up);
     Vec3f scale_factor (frame_buffer->width/state.camera.aspect_ratio/2.0f, frame_buffer->height/2.0f, 1.0f);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
-    Mat4x4f world = Mat4x4f::scale(Vec3f(3.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f);
+    Mat4x4f world = Mat4x4f::scale(Vec3f(3.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f); // TEMPORARY: world should be assumed orthonormal & no rotation!
 
     for (int o = 0; o < state.objects.size(); o++)
     {
@@ -257,5 +265,27 @@ void update()
         direction.z = sin(state.camera.pitch) * cos(state.camera.yaw);
 
         state.camera.look_at = state.camera.pos + direction;
+    }
+
+    float movement_sensitivity = 0.01f;
+    if (input_actions.move_camera_forward)
+    {
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up).truncated().transposed();
+        state.camera.pos = state.camera.pos + (camera_inv * Vec3f(0.0f, 0.0f, -movement_sensitivity));
+    }
+    if (input_actions.move_camera_back)
+    {
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up).truncated().transposed();
+        state.camera.pos = state.camera.pos + (camera_inv * Vec3f(0.0f, 0.0f, movement_sensitivity));
+    }
+    if (input_actions.move_camera_left)
+    {
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up).truncated().transposed();
+        state.camera.pos = state.camera.pos + (camera_inv * Vec3f(-movement_sensitivity, 0.0f, 0.0f));
+    }
+    if (input_actions.move_camera_right)
+    {
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.look_at, state.camera.up).truncated().transposed();
+        state.camera.pos = state.camera.pos + (camera_inv * Vec3f(movement_sensitivity, 0.0f, 0.0f));
     }
 }
