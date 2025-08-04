@@ -169,6 +169,9 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
     // IDEA: should I make my rasterizer more robust, even at the cost of perf?
     //       if tiny perf consequences then sure, I can always remove them later, if needed 
 
+    // TODO: switch to 'close enough flat-triangle
+    // TODO: should be checking somewhere if triangle is too small to even rasterize
+
     struct TriangleVertexLabels { const Vertex *apex, *left, *right; } labels;
     // Set the apex
     if      (v0.device.y == v1.device.y) labels = { &v2, &v0, &v1 };    // WARNING: exact float checks is not good idea, but for now I know that results can be exact

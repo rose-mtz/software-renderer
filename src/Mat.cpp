@@ -275,6 +275,8 @@ Mat4x4f Mat4x4f::affine_matrix(const Mat3x3f& basis, const Vec3f& translation)
 
 Mat4x4f Mat4x4f::look_at(const Vec3f& pos, const Vec3f& at, const Vec3f& up)
 {
+    // TODO: clean up, plus switch ot look_towards
+
     Vec3f z = (pos - at).normalized(); // 'backwards' of camera
     Vec3f x = (up ^ z).normalized();   // right of camera
     Vec3f y = (z ^ x).normalized();    // up of camera
