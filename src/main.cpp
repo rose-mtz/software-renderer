@@ -151,8 +151,7 @@ void handle_events()
 void render_scene(Buffer* frame_buffer)
 {
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up);
-    Vec3f scale_factor (frame_buffer->width/state.camera.aspect_ratio/2.0f, frame_buffer->height/2.0f, 1.0f);
-    Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(scale_factor);
+    Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f));// NOTE: virtual screen height is 1
     Mat4x4f world = Mat4x4f::scale(Vec3f(1.0f)); // Mat4x4f::scale(Vec3f(3.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f); // TEMPORARY: world should be assumed orthonormal & no rotation!
 
     for (int o = 0; o < state.objects.size(); o++)
