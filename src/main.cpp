@@ -173,6 +173,7 @@ void render_scene(Buffer* frame_buffer)
                 vertex.color = obj.color; // TEMPORARY
                 vertex.world = world_pos;
                 vertex.view = view_pos;
+                vertex.cull = view_pos;
 
                 vertices.push_back(vertex);
             }

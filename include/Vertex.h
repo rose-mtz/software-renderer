@@ -4,10 +4,11 @@
 struct Vertex
 {
     Vec2f device;
-    float depth;
+    float depth; // TODO: just combine depth and device!!
     Vec3f color;
     Vec3f world;
     Vec3f view;
+    Vec3f cull;
 };
 
 struct EdgeTracker

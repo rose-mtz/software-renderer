@@ -36,11 +36,15 @@ EdgeTracker set_up_edge_tracker(const Vertex& v0, const Vertex& v1, bool step_in
 
 Vertex interpolate_vertex(Vertex v0, Vertex v1, float t)
 {
+    assert(t >= 0.0f && t <= 1.0f);
+
     Vertex interp;
     interp.world  = v0.world  * (1.0f - t) + v1.world  * t;
     interp.view   = v0.view   * (1.0f - t) + v1.view   * t;
     interp.device = v0.device * (1.0f - t) + v1.device * t;
     interp.color  = v0.color  * (1.0f - t) + v1.color  * t;
+    interp.depth  = v0.depth  * (1.0f - t) + v1.depth  * t;
+    interp.cull   = v0.cull   * (1.0f - t) + v1.cull   * t;
 
     return interp;
 }
