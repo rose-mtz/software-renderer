@@ -7,6 +7,7 @@ struct Vertex
     float depth;
     Vec3f color;
     Vec3f world;
+    Vec3f view;
 };
 
 struct EdgeTracker

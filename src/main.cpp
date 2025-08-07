@@ -80,6 +80,7 @@ void init()
     state.camera.pos = Vec3f(0.0f, 0.0f, 5.0f);
     state.camera.aspect_ratio = ((float) width) / ((float) height);
     state.camera.near = 1.0f;
+    state.camera.far = 25.0f;
     state.camera.yaw = radians(180.0f);
     state.camera.pitch = radians(90.0f);
 
@@ -167,23 +168,27 @@ void render_scene(Buffer* frame_buffer)
             {
                 Vec3f local_pos  = obj.mesh->get_local_position(face[v]);
                 Vec3f world_pos  = world * local * Vec4f(local_pos, 1.0f);
+                Vec3f view_pos   = camera * Vec4f(world_pos, 1.0f);
 
                 Vertex vertex;
                 vertex.color = obj.color; // TEMPORARY
                 vertex.world = world_pos;
+                vertex.view = view_pos;
 
                 vertices.push_back(vertex);
             }
 
-            Plane plane { 1.0f, 1.0f, 0.0f, 0.0f };
-            vertices = cull_polygon(vertices, plane);
+            std::vector<Plane> frustum_planes = get_frustum_planes(get_frustum(state.camera));
+            for (int p = 0; p < frustum_planes.size(); p++)
+            {
+                vertices = cull_polygon(vertices, frustum_planes[p]);
+            }
 
             for (int v = 0; v < vertices.size(); v++)
             {
                 Vertex& vertex = vertices[v];
 
-                Vec3f view_pos   = camera * Vec4f(vertex.world, 1.0f);
-                Vec3f projected_pos = Vec3f((view_pos.x / fabs(view_pos.z)) * state.camera.near, (view_pos.y / fabs(view_pos.z)) * state.camera.near, view_pos.z);
+                Vec3f projected_pos = Vec3f((vertex.view.x / fabs(vertex.view.z)) * state.camera.near, (vertex.view.y / fabs(vertex.view.z)) * state.camera.near, vertex.view.z);
                 Vec3f device_pos = device * Vec4f(projected_pos, 1.0f);
 
                 vertex.device = device_pos.xy();

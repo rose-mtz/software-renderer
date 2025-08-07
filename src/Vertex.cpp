@@ -38,9 +38,9 @@ Vertex interpolate_vertex(Vertex v0, Vertex v1, float t)
 {
     Vertex interp;
     interp.world  = v0.world  * (1.0f - t) + v1.world  * t;
+    interp.view   = v0.view   * (1.0f - t) + v1.view   * t;
     interp.device = v0.device * (1.0f - t) + v1.device * t;
     interp.color  = v0.color  * (1.0f - t) + v1.color  * t;
-    
 
     return interp;
 }
