@@ -76,11 +76,11 @@ void init()
     resize_buffer(state.render_buffer, width, height);
 
     state.camera.up = Vec3f(0.0f, 1.0f, 0.0f);
-    state.camera.dir = Vec3f(0.0f, 0.0f, -1.0f);
     state.camera.pos = Vec3f(0.0f, 0.0f, 5.0f);
     state.camera.aspect_ratio = ((float) width) / ((float) height);
     state.camera.near = 1.0f;
     state.camera.far = 25.0f;
+    state.camera.dir = Vec3f(0.0f, 0.0f, -1.0f);
     state.camera.yaw = radians(180.0f);
     state.camera.pitch = radians(90.0f);
 
@@ -151,12 +151,12 @@ void handle_events()
 void render_scene(Buffer* frame_buffer)
 {
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up);
-    Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f));// NOTE: virtual screen height is 1
-    Mat4x4f world = Mat4x4f::scale(Vec3f(1.0f)); // Mat4x4f::scale(Vec3f(3.0f)) * Mat4x4f::rotation_y(SDL_GetTicks() * 0.001f); // TEMPORARY: world should be assumed orthonormal & no rotation!
+    Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f)); // NOTE: virtual screen height is 1
+    Mat4x4f world  = Mat4x4f::scale(Vec3f(1.0f));
 
     for (int o = 0; o < state.objects.size(); o++)
     {
-        Object& obj = state.objects[o];
+        Object& obj   = state.objects[o];
         Mat4x4f local = Mat4x4f::translation(obj.world_pos) * Mat4x4f::rotation_x(obj.orientation.x) * Mat4x4f::rotation_y(obj.orientation.y) * Mat4x4f::rotation_z(obj.orientation.z);
 
         for (int f = 0; f < obj.mesh->get_face_count(); f++)
@@ -227,7 +227,6 @@ void draw()
     }
     else
     {
-        clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
         clear_buffer(CLEAR_COLOR, state.render_buffer);
         render_scene(state.render_buffer);
         blit_buffer(state.render_buffer, state.screen_res_buffer);
