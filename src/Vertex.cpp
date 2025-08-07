@@ -34,6 +34,17 @@ EdgeTracker set_up_edge_tracker(const Vertex& v0, const Vertex& v1, bool step_in
     return edge;
 }
 
+Vertex interpolate_vertex(Vertex v0, Vertex v1, float t)
+{
+    Vertex interp;
+    interp.world  = v0.world  * (1.0f - t) + v1.world  * t;
+    interp.device = v0.device * (1.0f - t) + v1.device * t;
+    interp.color  = v0.color  * (1.0f - t) + v1.color  * t;
+    
+
+    return interp;
+}
+
 void take_step(EdgeTracker& edge, float step)
 {
     edge.v.device.x += edge.v_inc.device.x * step;

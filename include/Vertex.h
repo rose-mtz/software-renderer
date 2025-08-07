@@ -6,6 +6,7 @@ struct Vertex
     Vec2f device;
     float depth;
     Vec3f color;
+    Vec3f world;
 };
 
 struct EdgeTracker
@@ -16,3 +17,4 @@ struct EdgeTracker
 
 EdgeTracker set_up_edge_tracker(const Vertex& start, const Vertex& end, bool step_in_y_direction);
 void take_step(EdgeTracker& edge, float step = 1.0f);
+Vertex interpolate_vertex(Vertex v0, Vertex v1, float t);

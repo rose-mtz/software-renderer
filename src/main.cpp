@@ -10,6 +10,7 @@
 #include "Mat.h"
 #include "Camera.h"
 #include "Object.h"
+#include "Geometry.h"
 
 struct Actions
 {
@@ -166,16 +167,27 @@ void render_scene(Buffer* frame_buffer)
             {
                 Vec3f local_pos  = obj.mesh->get_local_position(face[v]);
                 Vec3f world_pos  = world * local * Vec4f(local_pos, 1.0f);
-                Vec3f view_pos   = camera * Vec4f(world_pos, 1.0f);
+
+                Vertex vertex;
+                vertex.color = obj.color; // TEMPORARY
+                vertex.world = world_pos;
+
+                vertices.push_back(vertex);
+            }
+
+            Plane plane { 1.0f, 1.0f, 0.0f, 0.0f };
+            vertices = cull_polygon(vertices, plane);
+
+            for (int v = 0; v < vertices.size(); v++)
+            {
+                Vertex& vertex = vertices[v];
+
+                Vec3f view_pos   = camera * Vec4f(vertex.world, 1.0f);
                 Vec3f projected_pos = Vec3f((view_pos.x / fabs(view_pos.z)) * state.camera.near, (view_pos.y / fabs(view_pos.z)) * state.camera.near, view_pos.z);
                 Vec3f device_pos = device * Vec4f(projected_pos, 1.0f);
 
-                Vertex vertex;
                 vertex.device = device_pos.xy();
                 vertex.depth = device_pos.z;
-                vertex.color = obj.color; // TEMPORARY
-
-                vertices.push_back(vertex);
             }
 
             rasterize_polygon(vertices, frame_buffer);
