@@ -46,6 +46,8 @@ std::vector<Plane> get_frustum_planes(Frustum fru)
 {
     std::vector<Plane> planes;
 
+    // QUESTION: should I be transforming into a space (multiply by a matrix)?
+
     Plane top    {  0.0f,       -1.0f/fru.t, -1.0f/fru.n,  0.0f  };
     Plane bottom {  0.0f,        1.0f/fru.b, -1.0f/fru.n,  0.0f  };
     Plane left   {  1.0f/fru.l,  0.0f,       -1.0f/fru.n,  0.0f  };
@@ -77,8 +79,9 @@ Vec3f get_triangle_normal(const Vec3f& a, const Vec3f& b, const Vec3f& c)
     return (v1 ^ v2).normalized();
 }
 
-std::vector<Vertex> cull_polygon(std::vector<Vertex> polygon, Plane plane)
+void cull_polygon(const std::vector<Vertex>& polygon, Plane plane, std::vector<Vertex>& in, std::vector<Vertex>& out)
 {
+    // TODO: maybe let user handle normalization, since sometimes user will already pass in normalized plane
     float one_over_length = 1.0f / Vec3f(plane.a, plane.b, plane.c).length();
     plane.a *= one_over_length;
     plane.b *= one_over_length;
@@ -88,19 +91,26 @@ std::vector<Vertex> cull_polygon(std::vector<Vertex> polygon, Plane plane)
     Vec3f norm (plane.a, plane.b, plane.c);
     float d = plane.d;
 
-    std::vector<Vertex> in;
     for (int i = 0; i < polygon.size(); i++)
     {
         Vertex cur = polygon[i];
         float cur_delta = norm * cur.cull + d;
 
         float fudge = 0.001f;
-
         bool is_cur_in = cur_delta > fudge;
         bool is_cur_on = std::abs(cur_delta) <= fudge;
-        if (is_cur_in || is_cur_on)
+        if (is_cur_on)
         {
             in.push_back(cur);
+            out.push_back(cur);
+        }
+        else if (is_cur_in)
+        {
+            in.push_back(cur);
+        }
+        else
+        {
+            out.push_back(cur);
         }
 
         Vertex next = polygon[(i + 1) % polygon.size()];
@@ -114,9 +124,9 @@ std::vector<Vertex> cull_polygon(std::vector<Vertex> polygon, Plane plane)
             Vec3f dir = (next.cull - cur.cull) * (1.0f/total_length);
             float length = std::abs(cur_delta / (dir * norm));
 
-            in.push_back(interpolate_vertex(cur, next, length/total_length));
+            Vertex interp = interpolate_vertex(cur, next, length/total_length); 
+            in.push_back(interp);
+            out.push_back(interp);
         }
     }
-
-    return in;
 }

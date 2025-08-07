@@ -181,7 +181,9 @@ void render_scene(Buffer* frame_buffer)
             std::vector<Plane> frustum_planes = get_frustum_planes(get_frustum(state.camera));
             for (int p = 0; p < frustum_planes.size(); p++)
             {
-                vertices = cull_polygon(vertices, frustum_planes[p]);
+                std::vector<Vertex> in, out;
+                cull_polygon(vertices, frustum_planes[p], in, out);
+                vertices = in;
             }
 
             for (int v = 0; v < vertices.size(); v++)
