@@ -5,7 +5,6 @@
 
 struct Plane { float a, b, c, d; };
 
-// void cut_polygon(const std::vector<Vertex>& polygon, float y, std::vector<Vertex>& top, std::vector<Vertex>& bottom);
 void cull_polygon(const std::vector<Vertex>& polygon, Plane plane, std::vector<Vertex>& in, std::vector<Vertex>& out, float epsilon = 0.001f);
 std::vector<Plane> get_frustum_planes(Frustum frustum);
 
