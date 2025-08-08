@@ -4,6 +4,10 @@
 #include <cassert>
 
 
+// For cutting polygons
+// For checking if two device.y's are the same
+const float EPSILON = 0.001f;
+
 void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
 {
     // BUG: radius is device-resolution dependent
@@ -172,19 +176,23 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
     // TODO: switch to 'close enough flat-triangle
     // TODO: should be checking somewhere if triangle is too small to even rasterize
 
+    if (std::abs((v1.device - v0.device) ^ (v2.device - v0.device)) < 0.01) return;
+
     struct TriangleVertexLabels { const Vertex *apex, *left, *right; } labels;
     // Set the apex
-    if      (v0.device.y == v1.device.y) labels = { &v2, &v0, &v1 };    // WARNING: exact float checks is not good idea, but for now I know that results can be exact
-    else if (v0.device.y == v2.device.y) labels = { &v1, &v0, &v2 };    //          due to setting exact values before passing to this function
+    if      (std::abs(v0.device.y - v1.device.y) < EPSILON) labels = { &v2, &v0, &v1 };    // WARNING: exact float checks is not good idea, but for now I know that results can be exact
+    else if (std::abs(v0.device.y - v2.device.y) < EPSILON) labels = { &v1, &v0, &v2 };    //          due to setting exact values before passing to this function
     else                                 labels = { &v0, &v1, &v2 };
     // Swap left right to correct order
     if (labels.left->device.x > labels.right->device.x) std::swap(labels.left, labels.right);
 
+    // PROBLEM: need way to handle small triangles!!!
+
     // INPUT DATA SANITY CHECK: flat top/bottom triangle
-    assert(labels.left->device.y == labels.right->device.y);
+    assert(std::abs(labels.left->device.y - labels.right->device.y) < EPSILON);
     // INPUT DATA SANITY CHECK: non-colinear points
-    assert(labels.apex->device.y != labels.left->device.y);
-    assert(labels.right->device.x != labels.left->device.x);
+    // assert(labels.apex->device.y != labels.left->device.y);
+    // assert(labels.right->device.x != labels.left->device.x);
 
     EdgeTracker left;
     EdgeTracker right;
@@ -249,6 +257,23 @@ void rasterize_trapezoid(const Vertex& v0, const Vertex& v1, const Vertex& v2, c
     rasterize_triangle(v2, v3, v0, buffer);
 }
 
+// Assumes polygon is a vector of Vec2f or similar struct with .x and .y members
+float polygon_area(const std::vector<Vertex>& polygon)
+{
+    // COPIED FROM CHAT GPT
+    // Shoelace area
+
+    float area = 0.0f;
+    int n = polygon.size();
+    for (int i = 0; i < n; i++)
+    {
+        const Vec2f& current = polygon[i].device;
+        const Vec2f& next = polygon[(i + 1) % n].device;
+        area += current.x * next.y - next.x * current.y;
+    }
+    return fabs(area) * 0.5f;
+}
+
 // Polygon is assumed 'flat' (in all dimension)
 // Polygon must have some winding
 void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
@@ -261,6 +286,8 @@ void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
     top.clear();
     bottom.clear();
 
+    if (polygon_area(vertices) < 0.001f) return;
+
     // TODO: switch to insertion sort (apparently its faster on smaller lists)
     std::vector<float> sorted_heights (vertices.size());
     for (int i = 0; i < sorted_heights.size(); i++) sorted_heights[i] = vertices[i].device.y;
@@ -270,15 +297,18 @@ void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer)
 
     for (int i = 0; i < sorted_heights.size(); i++)
     {
-        cut_polygon(cur_polygon, sorted_heights[i], top, bottom);
+        Plane plane { 0.0f, 1.0f, 0.0f, -sorted_heights[i] };
+        cull_polygon(cur_polygon, plane, top, bottom, EPSILON);
 
         // Rasterize bottom piece
         if (bottom.size() == 4)
         {
+
             rasterize_trapezoid(bottom[0], bottom[1], bottom[2], bottom[3], buffer);
         }
         else if (bottom.size() == 3)
         {
+            // PROBLEM: SOMEWHERE!!!!
             rasterize_triangle(bottom[0], bottom[1], bottom[2], buffer);
         }
 

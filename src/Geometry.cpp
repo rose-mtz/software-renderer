@@ -79,7 +79,7 @@ Vec3f get_triangle_normal(const Vec3f& a, const Vec3f& b, const Vec3f& c)
     return (v1 ^ v2).normalized();
 }
 
-void cull_polygon(const std::vector<Vertex>& polygon, Plane plane, std::vector<Vertex>& in, std::vector<Vertex>& out)
+void cull_polygon(const std::vector<Vertex>& polygon, Plane plane, std::vector<Vertex>& in, std::vector<Vertex>& out, float epsilon)
 {
     // TODO: maybe let user handle normalization, since sometimes user will already pass in normalized plane
     float one_over_length = 1.0f / Vec3f(plane.a, plane.b, plane.c).length();
@@ -94,11 +94,11 @@ void cull_polygon(const std::vector<Vertex>& polygon, Plane plane, std::vector<V
     for (int i = 0; i < polygon.size(); i++)
     {
         Vertex cur = polygon[i];
-        float cur_delta = norm * cur.cull + d;
+        float cur_delta = (norm * cur.cull) + d;
 
-        float fudge = 0.001f;
-        bool is_cur_in = cur_delta > fudge;
-        bool is_cur_on = std::abs(cur_delta) <= fudge;
+        // float epsilon = 0.001f;
+        bool is_cur_in = cur_delta > epsilon;
+        bool is_cur_on = std::abs(cur_delta) <= epsilon;
         if (is_cur_on)
         {
             in.push_back(cur);
@@ -114,9 +114,9 @@ void cull_polygon(const std::vector<Vertex>& polygon, Plane plane, std::vector<V
         }
 
         Vertex next = polygon[(i + 1) % polygon.size()];
-        float next_delta = norm * next.cull + d;
-        bool is_next_in = next_delta > fudge;
-        bool is_next_on = std::abs(cur_delta) <= fudge;
+        float next_delta = (norm * next.cull) + d;
+        bool is_next_in = next_delta > epsilon;
+        bool is_next_on = std::abs(next_delta) <= epsilon;
 
         if (!is_cur_on && !is_next_on && ((is_cur_in && !is_next_in) || (!is_cur_in && is_next_in)))
         {

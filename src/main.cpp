@@ -195,6 +195,7 @@ void render_scene(Buffer* frame_buffer)
 
                 vertex.device = device_pos.xy();
                 vertex.depth = device_pos.z;
+                vertex.cull = Vec3f(vertex.device.x, vertex.device.y, 0.0f);
             }
 
             rasterize_polygon(vertices, frame_buffer);
