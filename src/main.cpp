@@ -224,18 +224,22 @@ void render_scene(Buffer* frame_buffer)
 
 void draw()
 {
-    if ((state.render_buffer->width == state.screen_res_buffer->width) && (state.render_buffer->height == state.screen_res_buffer->height))
-    {
-        clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
-        render_scene(state.screen_res_buffer);
-    }
-    else
-    {
-        clear_buffer(CLEAR_COLOR, state.render_buffer);
-        render_scene(state.render_buffer);
-        blit_buffer(state.render_buffer, state.screen_res_buffer);
-    }
+    // if ((state.render_buffer->width == state.screen_res_buffer->width) && (state.render_buffer->height == state.screen_res_buffer->height))
+    // {
+    //     clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
+    //     render_scene(state.screen_res_buffer);
+    // }
+    // else
+    // {
+    //     clear_buffer(CLEAR_COLOR, state.render_buffer);
+    //     render_scene(state.render_buffer);
+    //     blit_buffer(state.render_buffer, state.screen_res_buffer);
+    // }
 
+    clear_buffer(CLEAR_COLOR, state.render_buffer);
+    render_scene(state.render_buffer);
+    clear_buffer(Vec3f(0.5f, 0.20f, 0.0f), state.screen_res_buffer);
+    blit_buffer(state.render_buffer, state.screen_res_buffer, Vec2f(state.screen_res_buffer->width * 0.1f, state.screen_res_buffer->height * 0.1f), 0.8f, 0.8f);
     blit_window(state.screen_res_buffer->pixels);
 }
 

@@ -97,26 +97,40 @@ void clear_buffer(Vec3f color, Buffer* buffer)
     }
 }
 
-// Only blitz color
-void blit_buffer(Buffer* src, Buffer* target)
+float max(float a, float b)
 {
-    // TODO: let user pick offset to blitz on target
-    //          and also % width & % height to blitz
+    return a > b ? a : b;
+}
+
+float min(float a, float b)
+{
+    return a < b ? a : b;
+}
+
+// Only blitz color
+void blit_buffer(Buffer* src, Buffer* target, Vec2f offset, float width_percent, float height_percent)
+{
+    assert(width_percent > 0.0f && height_percent > 0.0f);
 
     // CORRECTNESS: it seems, theoretically, that if the src and targe resolutions
     //              difference is too high then bilinear sampling may be
     //              the wrong sampling strategy
 
-    float x_basis_scale = ((float) src->width) / ((float) target->width);
-    float y_basis_scale = ((float) src->height) / ((float) target->height);
+    Vec2f temp = offset + Vec2f(target->width * width_percent, target->height * height_percent);
+    Vec2i bottom_left (max(offset.x, 0.0f), max(offset.y, 0.0f));
+    Vec2i top_right (min(temp.x, target->width), min(temp.y, target->height));
 
-    for (int y = 0; y < target->height; y++)
+    float x_scale = ((float) src->width) / ((float) target->width) * (1.0f / width_percent);
+    float y_scale = ((float) src->height) / ((float) target->height) * (1.0f / height_percent);
+
+    for (int y = bottom_left.y; y < top_right.y; y++)
     {
-        for (int x = 0; x < target->width; x++)
+        for (int x = bottom_left.x; x < top_right.x; x++)
         {
-            Vec2f sample_point ((x + 0.5f) * x_basis_scale, (y + 0.5f) * y_basis_scale);
-            Vec3f sample = bilinear_sample(sample_point, src);
-            set_pixel(x,y, sample, target);
+            // REFACTOR: could refactor to reduce conversions, and maybe just do increments
+            Vec2f sample_point ((x + 0.5f - offset.x) * x_scale, (y + 0.5f - offset.y) * y_scale); // ROBUSTNESS: could sample point be outside of bounds of src buffer?
+            Vec3f sample = bilinear_sample(sample_point, src); // TODO: maybe give user option for bilinear or closest
+            set_pixel(x, y, sample, target);
         }
     }
 }

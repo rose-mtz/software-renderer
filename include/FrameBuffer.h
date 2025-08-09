@@ -20,7 +20,7 @@ struct Fragment
 
 void  clear_buffer(Vec3f color, Buffer* buffer);
 void  resize_buffer(Buffer* buffer, int width, int height);
-void  blit_buffer(Buffer* src, Buffer* target);
+void blit_buffer(Buffer* src, Buffer* target, Vec2f offset, float width_percent, float height_percent);
 void  set_fragment(const Fragment& frag, Buffer* buffer);
 
 Vec2f map_point(const Vec2f& point, Buffer* src, Buffer* target);
