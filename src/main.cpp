@@ -40,6 +40,7 @@ struct ProgramState
     Mesh* square = nullptr;
     Camera camera;
     std::vector<Object> objects;
+    TGAImage texture;
 } state;
 
 const int RESOLUTION_SCALERS_COUNT = 6;
@@ -119,6 +120,8 @@ void init()
     state.objects.push_back(right_face);
     state.objects.push_back(front_face);
     state.objects.push_back(back_face);
+
+    state.texture.read_tga_file("img/Cubie_Face_Red.tga");
 }
 
 void handle_time()
@@ -159,13 +162,14 @@ void render_scene(Buffer* frame_buffer)
         Object& obj   = state.objects[o];
         Mat4x4f local = Mat4x4f::translation(obj.world_pos) * Mat4x4f::rotation_x(obj.orientation.x) * Mat4x4f::rotation_y(obj.orientation.y) * Mat4x4f::rotation_z(obj.orientation.z);
 
-        for (int f = 0; f < obj.mesh->get_face_count(); f++)
+        for (int f = 0; f < obj.mesh->faces.size(); f++)
         {
-            std::vector<int> face = obj.mesh->get_face(f); // TEMPORARY: face just has indicies to vertices' local positions
+            std::vector<int> face = obj.mesh->faces[f]; // TEMPORARY: face just has indicies to vertices' local positions
             std::vector<Vertex> vertices;
-            for (int v = 0; v < face.size(); v++)
+            int vertex_count = face.size() / 2;
+            for (int v = 0; v < vertex_count; v++)
             {
-                Vec3f local_pos  = obj.mesh->get_local_position(face[v]);
+                Vec3f local_pos  = obj.mesh->local_positions[face[v * 2]];
                 Vec3f world_pos  = world * local * Vec4f(local_pos, 1.0f);
                 Vec3f view_pos   = camera * Vec4f(world_pos, 1.0f);
 
@@ -174,6 +178,7 @@ void render_scene(Buffer* frame_buffer)
                 vertex.world = world_pos;
                 vertex.view = view_pos;
                 vertex.cull = view_pos;
+                vertex.uv = obj.mesh->uvs[face[v * 2 + 1]];
 
                 vertices.push_back(vertex);
             }
@@ -198,18 +203,18 @@ void render_scene(Buffer* frame_buffer)
                 vertex.cull = Vec3f(vertex.device.x, vertex.device.y, 0.0f);
             }
 
-            rasterize_polygon(vertices, frame_buffer);
+            rasterize_polygon(vertices, frame_buffer, state.texture);
 
-            // for (int e = 0; e < vertices.size(); e++)
-            // {
-            //     Vertex v0 = vertices[e];
-            //     Vertex v1 = vertices[(e + 1) % vertices.size()];
+            for (int e = 0; e < vertices.size(); e++)
+            {
+                Vertex v0 = vertices[e];
+                Vertex v1 = vertices[(e + 1) % vertices.size()];
 
-            //     v0.color = Vec3f(0.0f);
-            //     v1.color = Vec3f(0.0f);
+                v0.color = Vec3f(1.0f);
+                v1.color = Vec3f(1.0f);
 
-            //     rasterize_line(v0, v1, 5, frame_buffer);
-            // }
+                rasterize_line(v0, v1, 5, frame_buffer);
+            }
 
             // for (int p = 0; p < vertices.size(); p++)
             // {

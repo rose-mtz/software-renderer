@@ -9,6 +9,7 @@ struct Vertex
     Vec3f world;
     Vec3f view;
     Vec3f cull;
+    Vec2f uv;
 };
 
 struct EdgeTracker

@@ -28,6 +28,9 @@ EdgeTracker set_up_edge_tracker(const Vertex& v0, const Vertex& v1, bool step_in
     edge.v_inc.color.x = (v1.color.x - v0.color.x) * one_over_delta;
     edge.v_inc.color.y = (v1.color.y - v0.color.y) * one_over_delta;
     edge.v_inc.color.z = (v1.color.z - v0.color.z) * one_over_delta;
+    
+    edge.v_inc.uv.x = (v1.uv.x - v0.uv.x) * one_over_delta;
+    edge.v_inc.uv.y = (v1.uv.y - v0.uv.y) * one_over_delta;
 
     edge.v = v0;
 
@@ -45,6 +48,7 @@ Vertex interpolate_vertex(Vertex v0, Vertex v1, float t)
     interp.color  = v0.color  * (1.0f - t) + v1.color  * t;
     interp.depth  = v0.depth  * (1.0f - t) + v1.depth  * t;
     interp.cull   = v0.cull   * (1.0f - t) + v1.cull   * t;
+    interp.uv     = v0.uv     * (1.0f - t) + v1.uv     * t;
 
     return interp;
 }
@@ -57,4 +61,6 @@ void take_step(EdgeTracker& edge, float step)
     edge.v.color.x  += edge.v_inc.color.x  * step;
     edge.v.color.y  += edge.v_inc.color.y  * step;
     edge.v.color.z  += edge.v_inc.color.z  * step;
+    edge.v.uv.x     += edge.v_inc.uv.x     * step;
+    edge.v.uv.y     += edge.v_inc.uv.y     * step;
 };

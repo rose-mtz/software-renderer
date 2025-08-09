@@ -26,34 +26,43 @@ Mesh::Mesh(const char *filename) : local_positions(), faces()
             Vec3f v;
             for (int i=0;i<3;i++) iss >> v.raw[i];
             local_positions.push_back(v);
-        } 
+        }
+        else if (!line.compare(0, 2, "vt"))
+        {
+            iss >> trash; iss >> trash;
+            Vec2f uv;
+            for (int i=0;i<2;i++) iss >> uv.raw[i];
+            uvs.push_back(uv);
+        }
         else if (!line.compare(0, 2, "f "))
         {
             iss >> trash;
             
             std::vector<int> f;
-            int v_idx;
-            while (iss >> v_idx)
+            int v_idx, uv_idx;
+            while (iss >> v_idx >> trash >> uv_idx)
             {
                 v_idx--;
+                uv_idx--;
                 f.push_back(v_idx);
+                f.push_back(uv_idx);
             }
             faces.push_back(f);
         }
     }
 }
 
-int Mesh::get_face_count()
-{
-    return faces.size();
-}
+// int Mesh::get_face_count()
+// {
+//     return faces.size();
+// }
 
-Vec3f Mesh::get_local_position(int i)
-{
-    return local_positions[i];
-}
+// Vec3f Mesh::get_local_position(int i)
+// {
+//     return local_positions[i];
+// }
 
-std::vector<int> Mesh::get_face(int idx)
-{
-    return faces[idx];
-}
+// std::vector<int> Mesh::get_face(int idx)
+// {
+//     return faces[idx];
+// }
