@@ -143,29 +143,6 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
     }
 }
 
-Vec3f sample_texture(Vec2f uv, TGAImage& texture)
-{
-    // assert(uv.x >= 0.0f && uv.x <= 1.0f);
-    // assert(uv.y >= 0.0f && uv.y <= 1.0f);
-    uv = clampedVec2f(uv, 0.0f, 1.0f);
-
-    int x = (uv.x * (texture.get_width() - 1));
-    int y = (uv.y * (texture.get_height() - 1));
-
-    assert(x > -1 && x < texture.get_width());
-    assert(y > -1 && y < texture.get_height());
-
-    TGAColor tga_color = texture.get(x, y);
-    Vec3f color (tga_color.r / 255.99f, tga_color.g / 255.99f, tga_color.b / 255.99f);
-
-    assert(color.r >= 0.0f && color.r <= 1.0f);
-    assert(color.g >= 0.0f && color.g <= 1.0f);
-    assert(color.b >= 0.0f && color.b <= 1.0f);
-
-    // return Vec3f(1.0f);
-    return color;
-}
-
 void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Buffer* buffer, TGAImage& texture)
 {
     /**
@@ -239,7 +216,6 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
         while (cur_pixel.x < right_stop)
         {
             Fragment frag;
-            // frag.color = clampedVec3f(scanline_edge.v.color, 0.0f, 1.0f);
             frag.color = sample_texture(scanline_edge.v.uv, texture);
             frag.pixel = Vec2i(cur_pixel.x, cur_pixel.y);
             frag.depth = scanline_edge.v.depth;
@@ -253,13 +229,6 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
         right.v.device.x += right.v_inc.device.x; // only need to calculate x value
         cur_scanline++;
     }
-}
-
-// Trapezoid MUST have flat top & bottoms
-void rasterize_trapezoid(const Vertex& v0, const Vertex& v1, const Vertex& v2, const Vertex& v3, Buffer* buffer, TGAImage& texture)
-{
-    rasterize_triangle(v0, v1, v2, buffer, texture);
-    rasterize_triangle(v2, v3, v0, buffer, texture);
 }
 
 // Polygon is assumed 'flat' (in all dimension)
@@ -286,10 +255,10 @@ void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer, TGAI
         Plane plane { 0.0f, 1.0f, 0.0f, -sorted_heights[i] };
         cull_polygon(cur_polygon, plane, top, bottom, EPSILON);
 
-        // Rasterize bottom piece
         if (bottom.size() == 4)
         {
-            rasterize_trapezoid(bottom[0], bottom[1], bottom[2], bottom[3], buffer, texture);
+            rasterize_triangle(bottom[0], bottom[1], bottom[2], buffer, texture);
+            rasterize_triangle(bottom[2], bottom[3], bottom[0], buffer, texture);
         }
         else if (bottom.size() == 3)
         {
