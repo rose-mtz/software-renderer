@@ -61,6 +61,9 @@ void get_element(int x, int y, float* elm, Buffer* buf)
 // uv will be clamped
 void sample_bilinear(float u, float v, float* smpl, Buffer* buf)
 {
+    assert(u >= -0.1f && u <= 1.1f);
+    assert(v >= -0.1f && v <= 1.1f);
+
     u = clampf(u, 0.0f, 1.0f);
     v = clampf(v, 0.0f, 1.0f);
 
@@ -87,6 +90,9 @@ void sample_bilinear(float u, float v, float* smpl, Buffer* buf)
 // uv will be clamped
 void sample_nearest(float u, float v, float* smpl, Buffer* buf)
 {
+    assert(u >= -0.1f && u <= 1.1f);
+    assert(v >= -0.1f && v <= 1.1f);
+
     u = clampf(u, 0.0f, 1.0f);
     v = clampf(v, 0.0f, 1.0f);
 
