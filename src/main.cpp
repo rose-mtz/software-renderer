@@ -11,6 +11,7 @@
 #include "Camera.h"
 #include "Object.h"
 #include "Geometry.h"
+#include "Buffer.h"
 
 struct Actions
 {
@@ -25,6 +26,13 @@ struct Actions
     bool move_camera_right = false;
 } input_actions;
 
+struct FrameBuffer
+{
+    Buffer* color;
+    Buffer* depth;
+    int width, height;
+};
+
 struct ProgramState
 {
     bool running = true;
@@ -32,15 +40,15 @@ struct ProgramState
     std::chrono::_V2::system_clock::time_point last_frame_start = std::chrono::high_resolution_clock::now();
     float dt = 0;
 
-    Buffer* render_buffer = nullptr;
-    Buffer* screen_res_buffer = nullptr;
+    FrameBuffer* render_buffer = nullptr;
+    FrameBuffer* screen_res_buffer = nullptr;
     int resolution_scale_index = 3;
 
     Vec2f mouse_pos;
     Mesh* square = nullptr;
     Camera camera;
     std::vector<Object> objects;
-    TGAImage texture;
+    Buffer* texture = nullptr;
 } state;
 
 const int RESOLUTION_SCALERS_COUNT = 6;
@@ -52,6 +60,8 @@ void draw();
 void handle_events();
 void handle_time();
 void init();
+
+Buffer* tga_image_to_buffer(TGAImage& img);
 
 int main()
 {
@@ -71,10 +81,20 @@ void init()
     int width = 640, height = 480;
     init_window(width, height);
 
-    state.screen_res_buffer = new Buffer();
-    resize_buffer(state.screen_res_buffer, width, height);
-    state.render_buffer = new Buffer();
-    resize_buffer(state.render_buffer, width, height);
+    state.screen_res_buffer = new FrameBuffer();
+    state.render_buffer = new FrameBuffer();
+    state.render_buffer->color = new Buffer();
+    state.render_buffer->depth = new Buffer();
+    state.screen_res_buffer->color = new Buffer();
+    state.screen_res_buffer->depth = new Buffer();
+    state.screen_res_buffer->width = width;
+    state.screen_res_buffer->height = height;
+    state.render_buffer->width = width;
+    state.render_buffer->height = height;
+    init_buffer(width, height, 3, state.render_buffer->color);
+    init_buffer(width, height, 1, state.render_buffer->depth);
+    init_buffer(width, height, 3, state.screen_res_buffer->color);
+    init_buffer(width, height, 1, state.screen_res_buffer->depth);
 
     state.camera.up = Vec3f(0.0f, 1.0f, 0.0f);
     state.camera.pos = Vec3f(0.0f, 0.0f, 5.0f);
@@ -121,7 +141,9 @@ void init()
     state.objects.push_back(front_face);
     state.objects.push_back(back_face);
 
-    state.texture.read_tga_file("img/Cubie_Face_Red.tga");
+    TGAImage tga_image;
+    tga_image.read_tga_file("img/Cubie_Face_Red.tga");
+    state.texture = tga_image_to_buffer(tga_image);
 }
 
 void handle_time()
@@ -151,7 +173,7 @@ void handle_events()
     input_actions.move_camera_right = window.input.keys[KEY_RIGHT].is_down;
 }
 
-void render_scene(Buffer* frame_buffer)
+void render_scene(FrameBuffer* frame_buffer)
 {
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f)); // NOTE: virtual screen height is 1
@@ -203,7 +225,7 @@ void render_scene(Buffer* frame_buffer)
                 vertex.cull = Vec3f(vertex.device.x, vertex.device.y, 0.0f);
             }
 
-            rasterize_polygon(vertices, frame_buffer, state.texture);
+            rasterize_polygon(vertices, frame_buffer->color, frame_buffer->depth, state.texture);
 
             for (int e = 0; e < vertices.size(); e++)
             {
@@ -213,16 +235,16 @@ void render_scene(Buffer* frame_buffer)
                 v0.color = Vec3f(1.0f);
                 v1.color = Vec3f(1.0f);
 
-                rasterize_line(v0, v1, 5, frame_buffer);
+                // rasterize_line(v0, v1, 5, frame_buffer->color, frame_buffer->depth);
             }
 
-            // for (int p = 0; p < vertices.size(); p++)
-            // {
-            //     Vertex point = vertices[p];
-            //     point.color = Vec3f(1.0f, 1.0f, 1.0f);
+            for (int p = 0; p < vertices.size(); p++)
+            {
+                Vertex point = vertices[p];
+                point.color = Vec3f(1.0f, 1.0f, 1.0f);
 
-            //     rasterize_point(point, 8, frame_buffer);
-            // }
+                // rasterize_point(point, 8, frame_buffer->color, frame_buffer->depth  );
+            }
         }
     }
 }
@@ -241,11 +263,18 @@ void draw()
     //     blit_buffer(state.render_buffer, state.screen_res_buffer);
     // }
 
-    clear_buffer(CLEAR_COLOR, state.render_buffer);
+    Vec3f RED (0.1f, 0.1f, 0.30f);
+    Vec3f YELLOW (1.0f, 1.0f, 0.0f);
+
+    clear_buffer(RED.raw, state.render_buffer->color);
+    clear_buffer(&MAX_DEPTH, state.render_buffer->depth);
+    clear_buffer(YELLOW.raw, state.screen_res_buffer->color);
+    clear_buffer(&MAX_DEPTH, state.screen_res_buffer->depth);
+    Vec2f offset (state.screen_res_buffer->width * 0.1f, state.screen_res_buffer->height * 0.1f);
+    
     render_scene(state.render_buffer);
-    clear_buffer(Vec3f(0.5f, 0.20f, 0.0f), state.screen_res_buffer);
-    blit_buffer(state.render_buffer, state.screen_res_buffer, Vec2f(state.screen_res_buffer->width * 0.1f, state.screen_res_buffer->height * 0.1f), 0.8f, 0.8f);
-    blit_window(state.screen_res_buffer->pixels);
+    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, 0.0f, 0.0f, 1.0f, 1.0f);
+    blit_window(state.screen_res_buffer->color->data);
 }
 
 void update()
@@ -258,20 +287,23 @@ void update()
     if (input_actions.resize_window)
     {
         resize_window(window.input.window.new_width, window.input.window.new_height);
-        resize_buffer(state.screen_res_buffer, window.input.window.new_width, window.input.window.new_height);
-        resize_buffer(state.render_buffer, window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index]);
+        resize_buffer(window.input.window.new_width, window.input.window.new_height, state.screen_res_buffer->color);
+        resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->color);
+        resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->depth);
         state.camera.aspect_ratio = ((float) window.input.window.new_width) / ((float) window.input.window.new_height);
     }
 
     if (input_actions.update_mouse_pos)
     {
-        state.mouse_pos = map_point(Vec2f(window.input.mouse.pos.x, window.height - window.input.mouse.pos.y), state.screen_res_buffer, state.render_buffer);
+        Vec2f mouse_pos = Vec2f(window.input.mouse.pos.x, window.height - window.input.mouse.pos.y);
+        map_sample_point(mouse_pos.raw, state.screen_res_buffer->color, state.render_buffer->color, state.mouse_pos.raw);
     }
 
     if (input_actions.cycle_resolution)
     {
         state.resolution_scale_index = (state.resolution_scale_index + 1) % RESOLUTION_SCALERS_COUNT;
-        resize_buffer(state.render_buffer, state.screen_res_buffer->width * RESOLUTION_SCALERS[state.resolution_scale_index], state.screen_res_buffer->height * RESOLUTION_SCALERS[state.resolution_scale_index]);
+        resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->color);
+        resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->depth);
     }
 
     if (input_actions.change_camera_orientation) // only pitch and yaw
@@ -316,4 +348,22 @@ void update()
         Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(movement_sensitivity, 0.0f, 0.0f));
     }
+}
+
+Buffer* tga_image_to_buffer(TGAImage& img)
+{
+    Buffer* buffer = new Buffer();
+    init_buffer(img.get_width(), img.get_height(), 3, buffer);
+
+    for (int y = 0; y < img.get_height(); y++)
+    {
+        for (int x = 0; x < img.get_width(); x++)
+        {
+            TGAColor tga_color = img.get(x, y);
+            Vec3f rgb (tga_color.r / 255.0f, tga_color.g / 255.0f, tga_color.b / 255.0f);
+            set_element(x, y, rgb.raw, buffer);
+        }
+    }
+
+    return buffer;
 }

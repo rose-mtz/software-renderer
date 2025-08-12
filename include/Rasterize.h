@@ -1,13 +1,14 @@
 #pragma once
 #include "Vec.h"
-#include "FrameBuffer.h"
+#include "Buffer.h"
 #include <vector>
 #include "Vertex.h"
 #include "tgaimage.h"
 
-void rasterize_point(const Vertex& v, int width, Buffer* buffer);
-void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffer);
-void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer, TGAImage& texture);
+
+void rasterize_point(const Vertex& v, int width, Buffer* color_buffer, Buffer* depth_buffer);
+void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* color_buffer, Buffer* depth_buffer);
+void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* color_buffer, Buffer* depth_buffer, Buffer* texture);
 
 // NOTE: currently, rasterizer expect in-bounds device coordinates
 //          if they are out-of-bounds, and the primitive to render

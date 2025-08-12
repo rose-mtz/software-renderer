@@ -3,12 +3,36 @@
 #include <algorithm>
 #include <cassert>
 
+struct Fragment
+{
+    Vec2i pixel;
+    Vec3f color;
+    float opacity;
+    float depth;
+};
+
+void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer)
+{
+    // set_element(frag.pixel.x, frag.pixel.y, frag.color.raw, color_buffer);
+    // set_element(frag.pixel.x, frag.pixel.y, &frag.depth, depth_buffer);
+
+    assert(frag.color.x != 0.0f || frag.color.y != 0.0f || frag.color.z != 0.0f);
+    bool is_out_of_bounds = (frag.pixel.x < 0 || frag.pixel.x >= color_buffer->width) || (frag.pixel.y < 0 || frag.pixel.y >= color_buffer->height);
+    float depth; get_element(frag.pixel.x, frag.pixel.y, &depth, depth_buffer);
+    bool is_hidden = depth > frag.depth;
+
+    if (!is_out_of_bounds && !is_hidden)
+    {
+        set_element(frag.pixel.x, frag.pixel.y, frag.color.raw, color_buffer);
+        set_element(frag.pixel.x, frag.pixel.y, &frag.depth, depth_buffer);
+    }
+}
 
 // For cutting polygons
 // For checking if two device.y's are the same
 const float EPSILON = 0.001f;
 
-void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
+void rasterize_point(const Vertex& v, int radius, Buffer* color_buffer, Buffer* depth_buffer)
 {
     // BUG: radius is device-resolution dependent
     //      high-res buffers will have small points
@@ -58,7 +82,7 @@ void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
             frag.color = v.color;
             frag.pixel = Vec2i(cur_column, cur_scanline);
             frag.depth = v.depth;
-            set_fragment(frag, buffer);
+            set_fragment(frag, color_buffer, depth_buffer);
 
             cur_column++;
         }
@@ -67,7 +91,7 @@ void rasterize_point(const Vertex& v, int radius, Buffer* buffer)
     }
 }
 
-void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffer)
+void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* color_buffer, Buffer* depth_buffer)
 {
     // BUG: width is device-resolution dependent
     //      high-res buffers will have small lines
@@ -135,7 +159,7 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
             {
                 frag.pixel = Vec2i(cur_column, shifted_scanline);
             }
-            set_fragment(frag, buffer);
+            set_fragment(frag, color_buffer, depth_buffer);
         }
 
         take_step(edge);
@@ -143,7 +167,7 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* buffe
     }
 }
 
-void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Buffer* buffer, TGAImage& texture)
+void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Buffer* color_buffer, Buffer* depth_buffer, Buffer* texture)
 {
     /**
      * PROCESS:
@@ -216,10 +240,10 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
         while (cur_pixel.x < right_stop)
         {
             Fragment frag;
-            frag.color = sample_texture(scanline_edge.v.uv, texture);
+            sample_bilinear(scanline_edge.v.uv.x, scanline_edge.v.uv.y, frag.color.raw, texture);
             frag.pixel = Vec2i(cur_pixel.x, cur_pixel.y);
             frag.depth = scanline_edge.v.depth;
-            set_fragment(frag, buffer);
+            set_fragment(frag, color_buffer, depth_buffer);
 
             cur_pixel.x++;
             take_step(scanline_edge);
@@ -233,7 +257,7 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 
 // Polygon is assumed 'flat' (in all dimension)
 // Polygon must have some winding
-void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer, TGAImage& texture)
+void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* color_buffer, Buffer* depth_buffer, Buffer* texture)
 {
     // Allocate vectors once
     static std::vector<Vertex> cur_polygon (15);
@@ -257,12 +281,12 @@ void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* buffer, TGAI
 
         if (bottom.size() == 4)
         {
-            rasterize_triangle(bottom[0], bottom[1], bottom[2], buffer, texture);
-            rasterize_triangle(bottom[2], bottom[3], bottom[0], buffer, texture);
+            rasterize_triangle(bottom[0], bottom[1], bottom[2], color_buffer, depth_buffer, texture);
+            rasterize_triangle(bottom[2], bottom[3], bottom[0], color_buffer, depth_buffer, texture);
         }
         else if (bottom.size() == 3)
         {
-            rasterize_triangle(bottom[0], bottom[1], bottom[2], buffer, texture);
+            rasterize_triangle(bottom[0], bottom[1], bottom[2], color_buffer, depth_buffer, texture);
         }
 
         std::swap(cur_polygon, top);
