@@ -1,3 +1,4 @@
+#include "Util.h"
 #include "Rasterize.h"
 #include "Geometry.h"
 #include <algorithm>
@@ -13,9 +14,6 @@ struct Fragment
 
 void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer)
 {
-    // set_element(frag.pixel.x, frag.pixel.y, frag.color.raw, color_buffer);
-    // set_element(frag.pixel.x, frag.pixel.y, &frag.depth, depth_buffer);
-
     assert(frag.color.x != 0.0f || frag.color.y != 0.0f || frag.color.z != 0.0f);
     bool is_out_of_bounds = (frag.pixel.x < 0 || frag.pixel.x >= color_buffer->width) || (frag.pixel.y < 0 || frag.pixel.y >= color_buffer->height);
     float depth; get_element(frag.pixel.x, frag.pixel.y, &depth, depth_buffer);
@@ -185,6 +183,10 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
      *      take step forward on left edge tracker
      *      take step forward on right edge tracker
      */
+
+    // NOTE: triangle rasterization process can sample points outside of the triangle
+    //       this can lead to unexpected values for the interpolated vertex
+    //       like out-of-bounds uvs, thus this must be dealt
     
     if (std::abs((v1.device - v0.device) ^ (v2.device - v0.device))/2.0f < 1.0f) return;
 
@@ -240,7 +242,7 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
         while (cur_pixel.x < right_stop)
         {
             Fragment frag;
-            sample_bilinear(scanline_edge.v.uv.x, scanline_edge.v.uv.y, frag.color.raw, texture);
+            sample_bilinear(clampf(scanline_edge.v.uv.x, 0.0f, 1.0f), clampf(scanline_edge.v.uv.y, 0.0f, 1.0f), frag.color.raw, texture);
             frag.pixel = Vec2i(cur_pixel.x, cur_pixel.y);
             frag.depth = scanline_edge.v.depth;
             set_fragment(frag, color_buffer, depth_buffer);
@@ -259,6 +261,8 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 // Polygon must have some winding
 void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* color_buffer, Buffer* depth_buffer, Buffer* texture)
 {
+    // ROBUSTNESS: degenerate polygon check?
+
     // Allocate vectors once
     static std::vector<Vertex> cur_polygon (15);
     static std::vector<Vertex> top (15);

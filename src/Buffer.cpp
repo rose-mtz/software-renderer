@@ -1,40 +1,8 @@
 #include <cassert>
 #include "Buffer.h"
+#include "Util.h"
 
 const int MAX_FPP = 4;
-
-// ------------------------------------------------------
-// TODO: make file to store these functions in
-
-float clampf(float f, float min, float max)
-{
-    assert(min <= max);
-    return f < min ? min : f > max ? max : f;
-}
-
-float clampi(int i, int min, int max)
-{
-    assert(min <= max);
-    return i < min ? min : i > max ? max : i;
-}
-
-float lerpf(float a, float b, float t)
-{
-    assert(t >= 0.0f && t <= 1.0f);
-    return a * (1.0f - t) + b * t;
-}
-
-float maxf(float a, float b)
-{
-    return a > b ? a : b;
-}
-
-float minf(float a, float b)
-{
-    return a < b ? a : b;
-}
-
-// --------------------------------------------------------
 
 void set_element(int x, int y, float* elm, Buffer* buf)
 {
@@ -61,8 +29,8 @@ void get_element(int x, int y, float* elm, Buffer* buf)
 // uv will be clamped
 void sample_bilinear(float u, float v, float* smpl, Buffer* buf)
 {
-    assert(u >= -0.1f && u <= 1.1f);
-    assert(v >= -0.1f && v <= 1.1f);
+    assert(u >= -0.5f && u <= 1.5f);
+    assert(v >= -0.5f && v <= 1.5f);
 
     u = clampf(u, 0.0f, 1.0f);
     v = clampf(v, 0.0f, 1.0f);
@@ -90,8 +58,8 @@ void sample_bilinear(float u, float v, float* smpl, Buffer* buf)
 // uv will be clamped
 void sample_nearest(float u, float v, float* smpl, Buffer* buf)
 {
-    assert(u >= -0.1f && u <= 1.1f);
-    assert(v >= -0.1f && v <= 1.1f);
+    assert(u >= -0.5f && u <= 1.5f);
+    assert(v >= -0.5f && v <= 1.5f);
 
     u = clampf(u, 0.0f, 1.0f);
     v = clampf(v, 0.0f, 1.0f);
