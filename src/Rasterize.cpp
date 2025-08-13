@@ -184,6 +184,15 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
      *      take step forward on right edge tracker
      */
 
+    // TODO: add assert that checks that points aren't too far outside of bounds of device space!!!
+    const float FUDGE = 1.0f; 
+    assert((v0.device.x >= 0.0f && v0.device.x <= color_buffer->width)  || (v0.device.x > color_buffer->width  && (v0.device.x - color_buffer->width) < FUDGE)  || (v0.device.x < 0.0f && std::abs(v0.device.x) < FUDGE)); 
+    assert((v0.device.y >= 0.0f && v0.device.y <= color_buffer->height) || (v0.device.y > color_buffer->height && (v0.device.y - color_buffer->height) < FUDGE) || (v0.device.y < 0.0f && std::abs(v0.device.y) < FUDGE)); 
+    assert((v1.device.x >= 0.0f && v1.device.x <= color_buffer->width)  || (v1.device.x > color_buffer->width  && (v1.device.x - color_buffer->width) < FUDGE)  || (v1.device.x < 0.0f && std::abs(v1.device.x) < FUDGE)); 
+    assert((v1.device.y >= 0.0f && v1.device.y <= color_buffer->height) || (v1.device.y > color_buffer->height && (v1.device.y - color_buffer->height) < FUDGE) || (v1.device.y < 0.0f && std::abs(v1.device.y) < FUDGE)); 
+    assert((v2.device.x >= 0.0f && v2.device.x <= color_buffer->width)  || (v2.device.x > color_buffer->width  && (v2.device.x - color_buffer->width) < FUDGE)  || (v2.device.x < 0.0f && std::abs(v2.device.x) < FUDGE)); 
+    assert((v2.device.y >= 0.0f && v2.device.y <= color_buffer->height) || (v2.device.y > color_buffer->height && (v2.device.y - color_buffer->height) < FUDGE) || (v2.device.y < 0.0f && std::abs(v2.device.y) < FUDGE)); 
+
     // NOTE: triangle rasterization process can sample points outside of the triangle
     //       this can lead to unexpected values for the interpolated vertex
     //       like out-of-bounds uvs, thus this must be dealt
@@ -226,9 +235,11 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
     take_step(left, delta_y);
     take_step(right, delta_y);
     int cur_scanline = start_scanline;
+    cur_scanline = max_i(0, cur_scanline); // ROBUSTNESS
 
     EdgeTracker scanline_edge = set_up_edge_tracker(*labels.left, *labels.right, false);
     int stop_scanline = is_apex_above_other_vertices ? ceil(labels.apex->device.y) : ceil(labels.left->device.y);
+    stop_scanline = min_i(color_buffer->height, stop_scanline); // ROBUSTNESS
 
     while (cur_scanline < stop_scanline)
     {
@@ -237,12 +248,14 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
         take_step(scanline_edge, delta_x);
 
         Vec2i cur_pixel (floor(left.v.device.x), cur_scanline);
+        cur_pixel.x = max_i(0, cur_pixel.x); // ROBUSTNESS
 
         int right_stop = floor(right.v.device.x);
+        right_stop = min_i(color_buffer->width, right_stop); // ROBUSTNESS
         while (cur_pixel.x < right_stop)
         {
             Fragment frag;
-            sample_bilinear(clampf(scanline_edge.v.uv.x, 0.0f, 1.0f), clampf(scanline_edge.v.uv.y, 0.0f, 1.0f), frag.color.raw, texture);
+            sample_bilinear(clampf(scanline_edge.v.uv.x, 0.0f, 1.0f), clampf(scanline_edge.v.uv.y, 0.0f, 1.0f), frag.color.raw, texture); // ROBUSTNESS
             frag.pixel = Vec2i(cur_pixel.x, cur_pixel.y);
             frag.depth = scanline_edge.v.depth;
             set_fragment(frag, color_buffer, depth_buffer);
