@@ -32,6 +32,8 @@ const float EPSILON = 0.001f;
 
 void rasterize_point(const Vertex& v, int radius, Buffer* color_buffer, Buffer* depth_buffer)
 {
+    // TODO: device point could be outside of bounds due to float point presicon/rounding, so add asserts, and add robustness
+
     // BUG: radius is device-resolution dependent
     //      high-res buffers will have small points
     //      low-res buffers will have big points
@@ -91,6 +93,8 @@ void rasterize_point(const Vertex& v, int radius, Buffer* color_buffer, Buffer* 
 
 void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* color_buffer, Buffer* depth_buffer)
 {
+    // TODO: device points could be outside of bounds due to float point presicon/rounding, so add asserts, and add robustness
+
     // BUG: width is device-resolution dependent
     //      high-res buffers will have small lines
     //      low-res buffers will have big lines
