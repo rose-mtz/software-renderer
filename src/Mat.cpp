@@ -295,32 +295,37 @@ Mat4x4f Mat4x4f::look_at(const Vec3f& pos, const Vec3f& dir, const Vec3f& up)
 
 Mat4x4f Mat4x4f::rotation_x(float theta)
 {
+    float c = cos(theta), s = sin(theta);
 
     return Mat4x4f(
-        1.0f,       0.0f,        0.0f, 0.0f,
-        0.0f, cos(theta), -sin(theta), 0.0f,
-        0.0f, sin(theta),  cos(theta), 0.0f,
-        0.0f,       0.0f,        0.0f, 1.0f
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f,    c,   -s, 0.0f,
+        0.0f,    s,    c, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
     );
 }
 
 Mat4x4f Mat4x4f::rotation_y(float theta)
 {
+    float c = cos(theta), s = sin(theta);
+
     return Mat4x4f(
-         cos(theta), 0.0f, sin(theta), 0.0f,
-               0.0f, 1.0f,       0.0f, 0.0f,
-        -sin(theta), 0.0f, cos(theta), 0.0f,
-               0.0f, 0.0f,       0.0f, 1.0f
+           c, 0.0f,    s, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+          -s, 0.0f,    c, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
     );
 }
 
 Mat4x4f Mat4x4f::rotation_z(float theta)
 {
+    float c = cos(theta), s = sin(theta);
+
     return Mat4x4f(
-        cos(theta), -sin(theta), 0.0f, 0.0f,
-        sin(theta),  cos(theta), 0.0f, 0.0f,
-              0.0f,        0.0f, 1.0f, 0.0f,
-              0.0f,        0.0f, 0.0f, 1.0f
+           c,    -s, 0.0f, 0.0f,
+           s,     c, 0.0f, 0.0f,
+        0.0f,  0.0f, 1.0f, 0.0f,
+        0.0f,  0.0f, 0.0f, 1.0f
     );
 }
 
