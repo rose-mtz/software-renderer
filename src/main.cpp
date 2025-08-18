@@ -45,7 +45,6 @@ struct ProgramState
     int resolution_scale_index = 3;
 
     Vec2f mouse_pos;
-    Mesh* square = nullptr;
     Camera camera;
     std::vector<Object> objects;
     Buffer* texture = nullptr;
@@ -105,45 +104,15 @@ void init()
     state.camera.yaw = radians(180.0f);
     state.camera.pitch = radians(90.0f);
 
-    // TEMPORARY: cube ----------------------------------------------------------------------
-
-    Object top_face, front_face, bottom_face, back_face, left_face, right_face;
-    top_face.world_pos = Vec3f(0.0f, 0.5f, 0.0f);
-    top_face.orientation = Vec3f(radians(-90), 0.0f, 0.0f);
-    front_face.world_pos = Vec3f(0.0f, 0.0f, 0.5f);
-    back_face.world_pos = Vec3f(0.0f, 0.0f, -0.5f);
-    bottom_face.world_pos = Vec3f(0.0f, -0.5f, 0.0f);
-    bottom_face.orientation = Vec3f(radians(90), 0.0f, 0.0f);
-    left_face.world_pos = Vec3f(-0.5f, 0.0f, 0.0f);
-    left_face.orientation = Vec3f(0.0f, radians(-90), 0.0f);
-    right_face.world_pos = Vec3f(0.5f, 0.0f, 0.0f);
-    right_face.orientation = Vec3f(0.0f, radians(90), 0.0f);
-
-    state.square = new Mesh("obj/square.obj");
-    top_face.mesh = state.square;
-    bottom_face.mesh = state.square;
-    left_face.mesh = state.square;
-    right_face.mesh = state.square;
-    front_face.mesh = state.square;
-    back_face.mesh = state.square;
-
-    top_face.color    = Vec3f(1.0f, 0.0f, 0.0f);
-    bottom_face.color = Vec3f(0.0f, 1.0f, 0.0f);
-    left_face.color   = Vec3f(0.0f, 0.0f, 1.0f);
-    right_face.color  = Vec3f(1.0f, 1.0f, 1.0f);
-    front_face.color  = Vec3f(1.0f, 1.0f, 0.0f);
-    back_face.color   = Vec3f(1.0f, 0.0f, 1.0f);
-
-    state.objects.push_back(top_face);
-    state.objects.push_back(bottom_face);
-    state.objects.push_back(left_face);
-    state.objects.push_back(right_face);
-    state.objects.push_back(front_face);
-    state.objects.push_back(back_face);
-
     TGAImage tga_image;
     tga_image.read_tga_file("img/Cubie_Face_Red.tga");
     state.texture = tga_image_to_buffer(tga_image);
+
+    Object cube;
+    cube.world_pos = Vec3f(0.0f, 0.0f, 0.0f);
+    cube.orientation = Vec3f(0.0f, 0.0f, 0.0f);
+    cube.mesh = new Mesh("obj/cube.obj");
+    state.objects.push_back(cube);
 }
 
 void handle_time()
