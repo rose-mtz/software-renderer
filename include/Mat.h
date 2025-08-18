@@ -57,10 +57,8 @@ struct Mat4x4f
     static Mat4x4f rotation_z(float theta);
     static Mat4x4f translation(const Vec3f& v);
     static Mat4x4f scale(const Vec3f& scale);
+    static Mat4x4f identity_matrix();
 
     // TODO: switch to rotation about arbitrary axis
     // TODO: should make Mat3x3f functions, then let user call affine_matrix
 };
-
-// Utility functions
-float radians(float degree);

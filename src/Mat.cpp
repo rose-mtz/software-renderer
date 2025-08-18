@@ -344,7 +344,12 @@ Mat4x4f Mat4x4f::scale(const Vec3f& scale)
     );
 }
 
-float radians(float degree)
+Mat4x4f Mat4x4f::identity_matrix()
 {
-    return degree * (3.14159265358979f / 180.0f);
+    return Mat4x4f(
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f,
+        0.0f, 0.0f, 0.0f, 1.0f
+    );
 }

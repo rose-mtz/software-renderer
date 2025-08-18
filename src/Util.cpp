@@ -38,3 +38,8 @@ int max_i(int a, int b)
 {
     return a > b ? a : b;
 }
+
+float radians(float degree)
+{
+    return degree * (3.14159265358979f / 180.0f);
+}

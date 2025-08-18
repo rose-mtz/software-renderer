@@ -5,3 +5,4 @@ float maxf(float a, float b);
 float minf(float a, float b);
 int min_i(int a, int b);
 int max_i(int a, int b);
+float radians(float degree);

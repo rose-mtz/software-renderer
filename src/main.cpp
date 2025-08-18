@@ -149,7 +149,7 @@ void render_scene(FrameBuffer* frame_buffer)
 {
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f)); // NOTE: virtual screen height is 1
-    Mat4x4f world  = Mat4x4f::scale(Vec3f(1.0f));
+    Mat4x4f world  = Mat4x4f::identity_matrix();
 
     for (int o = 0; o < state.objects.size(); o++)
     {
