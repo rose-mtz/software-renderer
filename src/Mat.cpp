@@ -273,15 +273,15 @@ Mat4x4f Mat4x4f::affine_matrix(const Mat3x3f& basis, const Vec3f& translation)
     );
 }
 
-Mat4x4f Mat4x4f::look_at(const Vec3f& pos, const Vec3f& at, const Vec3f& up)
+Mat4x4f Mat4x4f::look_at(const Vec3f& pos, const Vec3f& dir, const Vec3f& up)
 {
-    // TODO: clean up, plus switch ot look_towards
+    assert((up.normalized() ^ dir.normalized()).length() > 1.0e-2f);
 
-    Vec3f z = (pos - at).normalized(); // 'backwards' of camera
-    Vec3f x = (up ^ z).normalized();   // right of camera
-    Vec3f y = (z ^ x).normalized();    // up of camera
+    Vec3f z = (dir * -1.0f).normalized();
+    Vec3f x = (up ^ z).normalized();
+    Vec3f y = (z ^ x).normalized();
 
-    Mat4x4f rotation_transposed = Mat4x4f(
+    Mat4x4f camera_inv = Mat4x4f(
         Vec4f(x, 0.0f),
         Vec4f(y, 0.0f),
         Vec4f(z, 0.0f),
@@ -290,7 +290,7 @@ Mat4x4f Mat4x4f::look_at(const Vec3f& pos, const Vec3f& at, const Vec3f& up)
 
     Mat4x4f translation_inv = translation(pos * -1.0f);
 
-    return rotation_transposed * translation_inv;
+    return camera_inv * translation_inv;
 }
 
 Mat4x4f Mat4x4f::rotation_x(float theta)

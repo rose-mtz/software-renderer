@@ -147,7 +147,7 @@ void handle_events()
 
 void render_scene(FrameBuffer* frame_buffer)
 {
-    Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up);
+    Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f)); // NOTE: virtual screen height is 1
     Mat4x4f world  = Mat4x4f::identity_matrix();
 
@@ -283,40 +283,40 @@ void update()
         float dy = window.input.mouse.delta.y;
         float sensitivity_y = 0.0025f, sensitivity_x = 0.0025f;
 
-        float MIN_PITCH = radians(10.0f);
-        float MAX_PITCH = radians(170.0f);
+        float MIN_PITCH = radians(5.0f);
+        float MAX_PITCH = radians(175.0f);
 
         state.camera.yaw += dx * sensitivity_x;
         state.camera.pitch += (-dy) * sensitivity_y;
         state.camera.pitch = state.camera.pitch > MAX_PITCH ? MAX_PITCH : state.camera.pitch < MIN_PITCH ? MIN_PITCH : state.camera.pitch;
 
-        Vec3f look_at;
-        look_at.x = sin(state.camera.pitch) * sin(state.camera.yaw);
-        look_at.y = cos(state.camera.pitch);
-        look_at.z = sin(state.camera.pitch) * cos(state.camera.yaw);
+        Vec3f look_towards;
+        look_towards.x = sin(state.camera.pitch) * sin(state.camera.yaw);
+        look_towards.y = cos(state.camera.pitch);
+        look_towards.z = sin(state.camera.pitch) * cos(state.camera.yaw);
 
-        state.camera.dir = look_at;
+        state.camera.dir = look_towards;
     }
 
     float movement_sensitivity = 0.01f;
     if (input_actions.move_camera_forward)
     {
-        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(0.0f, 0.0f, -movement_sensitivity));
     }
     if (input_actions.move_camera_back)
     {
-        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(0.0f, 0.0f, movement_sensitivity));
     }
     if (input_actions.move_camera_left)
     {
-        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(-movement_sensitivity, 0.0f, 0.0f));
     }
     if (input_actions.move_camera_right)
     {
-        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir + state.camera.pos, state.camera.up).truncated().transposed();
+        Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up).truncated().transposed();
         state.camera.pos = state.camera.pos + (camera_inv * Vec3f(movement_sensitivity, 0.0f, 0.0f));
     }
 }

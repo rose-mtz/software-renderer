@@ -51,7 +51,7 @@ struct Mat4x4f
     void    print()        const;
 
     static Mat4x4f affine_matrix(const Mat3x3f& basis, const Vec3f& translation);
-    static Mat4x4f look_at(const Vec3f& pos, const Vec3f& at, const Vec3f& up);
+    static Mat4x4f look_at(const Vec3f& pos, const Vec3f& dir, const Vec3f& up);
     static Mat4x4f rotation_x(float theta);
     static Mat4x4f rotation_y(float theta);
     static Mat4x4f rotation_z(float theta);
