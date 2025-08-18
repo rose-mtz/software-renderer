@@ -47,7 +47,6 @@ struct ProgramState
     Vec2f mouse_pos;
     Camera camera;
     std::vector<Object> objects;
-    Buffer* texture = nullptr;
 } state;
 
 const int RESOLUTION_SCALERS_COUNT = 6;
@@ -106,12 +105,15 @@ void init()
 
     TGAImage tga_image;
     tga_image.read_tga_file("img/Cubie_Face_Red.tga");
-    state.texture = tga_image_to_buffer(tga_image);
 
     Object cube;
-    cube.world_pos = Vec3f(0.0f, 0.0f, 0.0f);
-    cube.orientation = Vec3f(0.0f, 0.0f, 0.0f);
+    cube.translation = Vec3f(0.0f, 0.0f, 0.0f);
+    cube.yaw = 0.0f;
+    cube.pitch = 0.0f;
+    cube.roll = 0.0f;
+    cube.scale = Vec3f(2.0f, 1.0f, 1.0f);
     cube.mesh = new Mesh("obj/cube.obj");
+    cube.texture = tga_image_to_buffer(tga_image);
     state.objects.push_back(cube);
 }
 
@@ -151,11 +153,11 @@ void render_scene(FrameBuffer* frame_buffer)
     for (int o = 0; o < state.objects.size(); o++)
     {
         Object& obj   = state.objects[o];
-        Mat4x4f local = Mat4x4f::translation(obj.world_pos) * Mat4x4f::rotation_x(obj.orientation.x) * Mat4x4f::rotation_y(obj.orientation.y) * Mat4x4f::rotation_z(obj.orientation.z);
+        Mat4x4f local = Mat4x4f::translation(obj.translation) * Mat4x4f::scale(obj.scale) * Mat4x4f::rotation_y(obj.yaw) * Mat4x4f::rotation_x(obj.pitch) * Mat4x4f::rotation_z(obj.roll);
 
         for (int f = 0; f < obj.mesh->faces.size(); f++)
         {
-            std::vector<int> face = obj.mesh->faces[f]; // TEMPORARY: face just has indicies to vertices' local positions
+            std::vector<int> face = obj.mesh->faces[f];
             std::vector<Vertex> vertices;
             int vertex_count = face.size() / 2;
             for (int v = 0; v < vertex_count; v++)
@@ -165,7 +167,6 @@ void render_scene(FrameBuffer* frame_buffer)
                 Vec3f view_pos   = camera * Vec4f(world_pos, 1.0f);
 
                 Vertex vertex;
-                vertex.color = obj.color; // TEMPORARY
                 vertex.world = world_pos;
                 vertex.view = view_pos;
                 vertex.cull = view_pos;
@@ -194,7 +195,7 @@ void render_scene(FrameBuffer* frame_buffer)
                 vertex.cull = Vec3f(vertex.device.x, vertex.device.y, 0.0f);
             }
 
-            rasterize_polygon(vertices, frame_buffer->color, frame_buffer->depth, state.texture);
+            rasterize_polygon(vertices, frame_buffer->color, frame_buffer->depth, obj.texture);
 
             for (int e = 0; e < vertices.size(); e++)
             {
