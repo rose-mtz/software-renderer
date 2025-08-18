@@ -235,16 +235,16 @@ void draw()
     // }
 
     Vec3f RED (0.1f, 0.1f, 0.30f);
-    Vec3f YELLOW (1.0f, 1.0f, 0.0f);
+    Vec3f YELLOW (0.85f, 0.9f, 0.0f);
 
     clear_buffer(RED.raw, state.render_buffer->color);
     clear_buffer(&MAX_DEPTH, state.render_buffer->depth);
     clear_buffer(YELLOW.raw, state.screen_res_buffer->color);
     clear_buffer(&MAX_DEPTH, state.screen_res_buffer->depth);
-    Vec2f offset (state.screen_res_buffer->width * 0.1f, state.screen_res_buffer->height * 0.1f);
+    Vec2f offset (state.screen_res_buffer->width * 0.05f, state.screen_res_buffer->height * 0.05f);
     
     render_scene(state.render_buffer);
-    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, 0.0f, 0.0f, 1.0f, 1.0f);
+    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.9f, 0.9f);
     blit_window(state.screen_res_buffer->color->data);
 }
 
