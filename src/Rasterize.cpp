@@ -94,7 +94,7 @@ void rasterize_point(const Vertex& v, int radius, Buffer* color_buffer, Buffer* 
 void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* color_buffer, Buffer* depth_buffer)
 {
     // TODO: device points could be outside of bounds due to float point presicon/rounding, so add asserts, and add robustness
-
+    
     // BUG: width is device-resolution dependent
     //      high-res buffers will have small lines
     //      low-res buffers will have big lines
@@ -188,8 +188,7 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
      *      take step forward on right edge tracker
      */
 
-    // TODO: add assert that checks that points aren't too far outside of bounds of device space!!!
-    const float FUDGE = 1.0f; 
+    const float FUDGE = 1.0f;
     assert((v0.device.x >= 0.0f && v0.device.x <= color_buffer->width)  || (v0.device.x > color_buffer->width  && (v0.device.x - color_buffer->width) < FUDGE)  || (v0.device.x < 0.0f && std::abs(v0.device.x) < FUDGE)); 
     assert((v0.device.y >= 0.0f && v0.device.y <= color_buffer->height) || (v0.device.y > color_buffer->height && (v0.device.y - color_buffer->height) < FUDGE) || (v0.device.y < 0.0f && std::abs(v0.device.y) < FUDGE)); 
     assert((v1.device.x >= 0.0f && v1.device.x <= color_buffer->width)  || (v1.device.x > color_buffer->width  && (v1.device.x - color_buffer->width) < FUDGE)  || (v1.device.x < 0.0f && std::abs(v1.device.x) < FUDGE)); 
