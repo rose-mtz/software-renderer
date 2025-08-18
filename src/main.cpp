@@ -241,10 +241,10 @@ void draw()
     clear_buffer(&MAX_DEPTH, state.render_buffer->depth);
     clear_buffer(YELLOW.raw, state.screen_res_buffer->color);
     clear_buffer(&MAX_DEPTH, state.screen_res_buffer->depth);
-    Vec2f offset (state.screen_res_buffer->width * 0.05f, state.screen_res_buffer->height * 0.05f);
+    Vec2f offset (state.screen_res_buffer->width * 0.025f, state.screen_res_buffer->height * 0.025f);
     
     render_scene(state.render_buffer);
-    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.9f, 0.9f);
+    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.95f, 0.95f);
     blit_window(state.screen_res_buffer->color->data);
 }
 
