@@ -12,6 +12,7 @@
 #include "Object.h"
 #include "Geometry.h"
 #include "Buffer.h"
+#include "Util.h"
 
 struct Actions
 {
@@ -108,9 +109,9 @@ void init()
 
     Object cube;
     cube.translation = Vec3f(0.0f, 0.0f, 0.0f);
-    cube.yaw = 0.0f;
-    cube.pitch = 0.0f;
-    cube.roll = 0.0f;
+    cube.yaw = radians(90.0f);
+    cube.pitch = radians(15.0f);
+    cube.roll = radians(-90.0f);
     cube.scale = Vec3f(2.0f, 1.0f, 1.0f);
     cube.mesh = new Mesh("obj/cube.obj");
     cube.texture = tga_image_to_buffer(tga_image);
@@ -153,7 +154,7 @@ void render_scene(FrameBuffer* frame_buffer)
     for (int o = 0; o < state.objects.size(); o++)
     {
         Object& obj   = state.objects[o];
-        Mat4x4f local = Mat4x4f::translation(obj.translation) * Mat4x4f::scale(obj.scale) * Mat4x4f::rotation_y(obj.yaw) * Mat4x4f::rotation_x(obj.pitch) * Mat4x4f::rotation_z(obj.roll);
+        Mat4x4f local = Mat4x4f::translation(obj.translation) * Mat4x4f::rotation_y(obj.yaw) * Mat4x4f::rotation_x(obj.pitch) * Mat4x4f::rotation_z(obj.roll) * Mat4x4f::scale(obj.scale);
 
         for (int f = 0; f < obj.mesh->faces.size(); f++)
         {
