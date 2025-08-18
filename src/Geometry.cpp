@@ -6,8 +6,6 @@ std::vector<Plane> get_frustum_planes(Frustum fru)
 {
     std::vector<Plane> planes;
 
-    // QUESTION: should I be transforming into a space (multiply by a matrix)?
-
     Plane top    {  0.0f,       -1.0f/fru.t, -1.0f/fru.n,  0.0f  };
     Plane bottom {  0.0f,        1.0f/fru.b, -1.0f/fru.n,  0.0f  };
     Plane left   {  1.0f/fru.l,  0.0f,       -1.0f/fru.n,  0.0f  };
