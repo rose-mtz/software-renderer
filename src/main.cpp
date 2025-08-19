@@ -299,10 +299,10 @@ void update()
         state.resolution_scale_index = (state.resolution_scale_index + 1) % RESOLUTION_SCALERS_COUNT;
 
         // Update render buffer
-        state.render_buffer->width = window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index];
-        state.render_buffer->height = window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index];
-        resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->color);
-        resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->depth);
+        state.render_buffer->width = window.width * RESOLUTION_SCALERS[state.resolution_scale_index];
+        state.render_buffer->height = window.height * RESOLUTION_SCALERS[state.resolution_scale_index];
+        resize_buffer(window.width * RESOLUTION_SCALERS[state.resolution_scale_index], window.height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->color);
+        resize_buffer(window.width * RESOLUTION_SCALERS[state.resolution_scale_index], window.height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->depth);
     }
 
     if (input_actions.change_camera_orientation) // only pitch and yaw
