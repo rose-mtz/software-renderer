@@ -197,24 +197,24 @@ void render_scene(FrameBuffer* frame_buffer)
 
             rasterize_polygon(vertices, frame_buffer->color, frame_buffer->depth, obj.texture);
 
-            for (int e = 0; e < vertices.size(); e++)
-            {
-                Vertex v0 = vertices[e];
-                Vertex v1 = vertices[(e + 1) % vertices.size()];
+            // for (int e = 0; e < vertices.size(); e++)
+            // {
+            //     Vertex v0 = vertices[e];
+            //     Vertex v1 = vertices[(e + 1) % vertices.size()];
 
-                v0.color = Vec3f(1.0f);
-                v1.color = Vec3f(1.0f);
+            //     v0.color = Vec3f(1.0f);
+            //     v1.color = Vec3f(1.0f);
 
-                // rasterize_line(v0, v1, 5, frame_buffer->color, frame_buffer->depth);
-            }
+            //     rasterize_line(v0, v1, 5, frame_buffer->color, frame_buffer->depth);
+            // }
 
-            for (int p = 0; p < vertices.size(); p++)
-            {
-                Vertex point = vertices[p];
-                point.color = Vec3f(1.0f, 1.0f, 1.0f);
+            // for (int p = 0; p < vertices.size(); p++)
+            // {
+            //     Vertex point = vertices[p];
+            //     point.color = Vec3f(1.0f, 1.0f, 1.0f);
 
-                // rasterize_point(point, 8, frame_buffer->color, frame_buffer->depth  );
-            }
+            //     rasterize_point(point, 8, frame_buffer->color, frame_buffer->depth  );
+            // }
         }
     }
 }
