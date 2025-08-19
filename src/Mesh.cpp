@@ -5,7 +5,7 @@
 #include <vector>
 #include "Mesh.h"
 
-Mesh::Mesh(const char *filename) : local_positions(), faces()
+Mesh::Mesh(const char *filename) : vertices(), faces()
 {
     std::ifstream in;
     in.open (filename, std::ifstream::in);
@@ -25,7 +25,7 @@ Mesh::Mesh(const char *filename) : local_positions(), faces()
             iss >> trash;
             Vec3f v;
             for (int i=0;i<3;i++) iss >> v.raw[i];
-            local_positions.push_back(v);
+            vertices.push_back(v);
         }
         else if (!line.compare(0, 2, "vt"))
         {

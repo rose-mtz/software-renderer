@@ -148,7 +148,7 @@ void handle_events()
 void render_scene(FrameBuffer* frame_buffer)
 {
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up);
-    Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f)); // ASSUMPTION: virtual screen height is 1
+    Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f)); // ASSUMPTION: virtual screen height is 1, and width is aspect-ratio
     Mat4x4f world  = Mat4x4f::identity_matrix();
 
     for (int o = 0; o < state.objects.size(); o++)
@@ -163,7 +163,7 @@ void render_scene(FrameBuffer* frame_buffer)
             int vertex_count = face.size() / 2;
             for (int v = 0; v < vertex_count; v++)
             {
-                Vec3f local_pos  = obj.mesh->local_positions[face[v * 2]];
+                Vec3f local_pos  = obj.mesh->vertices[face[v * 2]];
                 Vec3f world_pos  = world * local * Vec4f(local_pos, 1.0f);
                 Vec3f view_pos   = camera * Vec4f(world_pos, 1.0f);
 
