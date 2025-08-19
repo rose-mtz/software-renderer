@@ -51,18 +51,3 @@ Mesh::Mesh(const char *filename) : local_positions(), faces()
         }
     }
 }
-
-// int Mesh::get_face_count()
-// {
-//     return faces.size();
-// }
-
-// Vec3f Mesh::get_local_position(int i)
-// {
-//     return local_positions[i];
-// }
-
-// std::vector<int> Mesh::get_face(int idx)
-// {
-//     return faces[idx];
-// }
