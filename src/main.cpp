@@ -242,10 +242,10 @@ void draw()
     render_scene(state.render_buffer);
 
     // Clear and blit onto screen res buffer
-    Vec2f offset (state.screen_res_buffer->width * clampf(0.5f * sin(SDL_GetTicks() * 0.001f) + 0.5f, 0.0f, 1.0f), state.screen_res_buffer->height * 0.0f);
+    Vec2f offset (state.screen_res_buffer->width * clampf(0.25f * sin(SDL_GetTicks() * 0.001f) + 0.25f, 0.0f, 1.0f), state.screen_res_buffer->height * clampf(0.25f * cos(SDL_GetTicks() * 0.001f) + 0.25f, 0.0f, 1.0f));
     clear_buffer(YELLOW.raw, state.screen_res_buffer->color);
     clear_buffer(&MAX_DEPTH, state.screen_res_buffer->depth);
-    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.75f, 0.75f);
+    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.5f, 0.5f);
 
     // Blit onto window
     blit_window(state.screen_res_buffer->color->data);
