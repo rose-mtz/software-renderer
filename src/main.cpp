@@ -221,18 +221,6 @@ void render_scene(FrameBuffer* frame_buffer)
 
 void draw()
 {
-    // if ((state.render_buffer->width == state.screen_res_buffer->width) && (state.render_buffer->height == state.screen_res_buffer->height))
-    // {
-    //     clear_buffer(CLEAR_COLOR, state.screen_res_buffer);
-    //     render_scene(state.screen_res_buffer);
-    // }
-    // else
-    // {
-    //     clear_buffer(CLEAR_COLOR, state.render_buffer);
-    //     render_scene(state.render_buffer);
-    //     blit_buffer(state.render_buffer, state.screen_res_buffer);
-    // }
-
     Vec3f BLUEISH (0.2f, 0.2f, clampf(0.5f * sin(SDL_GetTicks() * 0.0005f) + 0.5f, 0.0f, 1.0f));
     Vec3f YELLOW (0.85f, 0.9f, 0.0f);
 
@@ -245,15 +233,10 @@ void draw()
     Vec2f offset (state.screen_res_buffer->width * clampf(0.25f * sin(SDL_GetTicks() * 0.001f) + 0.25f, 0.0f, 1.0f), state.screen_res_buffer->height * clampf(0.25f * cos(SDL_GetTicks() * 0.001f) + 0.25f, 0.0f, 1.0f));
     clear_buffer(YELLOW.raw, state.screen_res_buffer->color);
     clear_buffer(&MAX_DEPTH, state.screen_res_buffer->depth);
-    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.5f, 0.5f);
+    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.75f, 0.75f);
 
     // Blit onto window
     blit_window(state.screen_res_buffer->color->data);
-
-    // clear_buffer(BLUEISH.raw, state.render_buffer->color);
-    // clear_buffer(&MAX_DEPTH, state.render_buffer->depth);
-    // render_scene(state.render_buffer);
-    // blit_window(state.render_buffer->color->data);
 }
 
 void update()
