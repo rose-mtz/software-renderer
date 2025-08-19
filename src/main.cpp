@@ -160,18 +160,17 @@ void render_scene(FrameBuffer* frame_buffer)
         {
             std::vector<int> face = obj.mesh->faces[f];
             std::vector<Vertex> vertices;
-            int vertex_count = face.size() / 2;
+            int vertex_count = face.size() / 2; // ASSUMPTION: 2 attributes per vertex (local pos, uv)
             for (int v = 0; v < vertex_count; v++)
             {
-                Vec3f local_pos  = obj.mesh->vertices[face[v * 2]];
-                Vec3f world_pos  = world * local * Vec4f(local_pos, 1.0f);
-                Vec3f view_pos   = camera * Vec4f(world_pos, 1.0f);
+                Vec3f local_pos = obj.mesh->vertices[face[v * 2]];
+                Vec2f uv = obj.mesh->uvs[face[v * 2 + 1]];
 
                 Vertex vertex;
-                vertex.world = world_pos;
-                vertex.view = view_pos;
-                vertex.cull = view_pos;
-                vertex.uv = obj.mesh->uvs[face[v * 2 + 1]];
+                vertex.world = world * local * Vec4f(local_pos, 1.0f);
+                vertex.view  = camera * Vec4f(vertex.world, 1.0f);
+                vertex.uv    = uv;
+                vertex.cull  = vertex.view;
 
                 vertices.push_back(vertex);
             }
@@ -193,7 +192,7 @@ void render_scene(FrameBuffer* frame_buffer)
 
                 vertex.device = device_pos.xy();
                 vertex.depth = device_pos.z;
-                vertex.cull = Vec3f(vertex.device.x, vertex.device.y, 0.0f);
+                vertex.cull = Vec3f(vertex.device.x, vertex.device.y, 0.0f); // So that rasterizer can cut up polygons into triangles
             }
 
             rasterize_polygon(vertices, frame_buffer->color, frame_buffer->depth, obj.texture);
@@ -250,6 +249,10 @@ void draw()
 
 void update()
 {
+    state.objects[0].pitch += 0.01f;
+    state.objects[0].yaw += 0.025f;
+    state.objects[0].scale.x = sin(SDL_GetTicks() * 0.0025f) + 2.0f; 
+
     if (input_actions.exit_program)
     {
         state.running = false; // TODO: maybe have a exit() function
