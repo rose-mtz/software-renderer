@@ -233,18 +233,27 @@ void draw()
     //     blit_buffer(state.render_buffer, state.screen_res_buffer);
     // }
 
-    Vec3f RED (0.1f, 0.1f, 0.30f);
+    Vec3f BLUEISH (0.2f, 0.2f, clampf(0.5f * sin(SDL_GetTicks() * 0.0005f) + 0.5f, 0.0f, 1.0f));
     Vec3f YELLOW (0.85f, 0.9f, 0.0f);
 
-    clear_buffer(RED.raw, state.render_buffer->color);
+    // Clear and render into render buffer
+    clear_buffer(BLUEISH.raw, state.render_buffer->color);
     clear_buffer(&MAX_DEPTH, state.render_buffer->depth);
+    render_scene(state.render_buffer);
+
+    // Clear and blit onto screen res buffer
+    Vec2f offset (state.screen_res_buffer->width * clampf(0.5f * sin(SDL_GetTicks() * 0.001f) + 0.5f, 0.0f, 1.0f), state.screen_res_buffer->height * 0.0f);
     clear_buffer(YELLOW.raw, state.screen_res_buffer->color);
     clear_buffer(&MAX_DEPTH, state.screen_res_buffer->depth);
-    Vec2f offset (state.screen_res_buffer->width * 0.025f, state.screen_res_buffer->height * 0.025f);
-    
-    render_scene(state.render_buffer);
-    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.95f, 0.95f);
+    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.75f, 0.75f);
+
+    // Blit onto window
     blit_window(state.screen_res_buffer->color->data);
+
+    // clear_buffer(BLUEISH.raw, state.render_buffer->color);
+    // clear_buffer(&MAX_DEPTH, state.render_buffer->depth);
+    // render_scene(state.render_buffer);
+    // blit_window(state.render_buffer->color->data);
 }
 
 void update()
@@ -260,10 +269,22 @@ void update()
 
     if (input_actions.resize_window)
     {
+        // Update window
         resize_window(window.input.window.new_width, window.input.window.new_height);
+
+        // Update screen resolution buffer
+        state.screen_res_buffer->width = window.input.window.new_width;
+        state.screen_res_buffer->height = window.input.window.new_height;
         resize_buffer(window.input.window.new_width, window.input.window.new_height, state.screen_res_buffer->color);
+        resize_buffer(window.input.window.new_width, window.input.window.new_height, state.screen_res_buffer->depth);
+
+        // Update render buffer
+        state.render_buffer->width = window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index];
+        state.render_buffer->height = window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index];
         resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->color);
         resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->depth);
+        
+        // Update camera aspect ratio
         state.camera.aspect_ratio = ((float) window.input.window.new_width) / ((float) window.input.window.new_height);
     }
 
@@ -276,6 +297,10 @@ void update()
     if (input_actions.cycle_resolution)
     {
         state.resolution_scale_index = (state.resolution_scale_index + 1) % RESOLUTION_SCALERS_COUNT;
+
+        // Update render buffer
+        state.render_buffer->width = window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index];
+        state.render_buffer->height = window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index];
         resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->color);
         resize_buffer(window.input.window.new_width * RESOLUTION_SCALERS[state.resolution_scale_index], window.input.window.new_height * RESOLUTION_SCALERS[state.resolution_scale_index], state.render_buffer->depth);
     }

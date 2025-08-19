@@ -95,6 +95,8 @@ void resize_buffer(int width, int height, Buffer* buf)
 
 void blit_buffer(Buffer* src, Buffer* target, float x_offset, float y_offset, float width_percent, float height_percent)
 {
+    // NOTE: their seems to be bugs being caused by this function
+
     assert(width_percent > 0.0f && height_percent > 0.0f);
     assert(target->fpp <= src->fpp);
 
@@ -108,7 +110,6 @@ void blit_buffer(Buffer* src, Buffer* target, float x_offset, float y_offset, fl
     {
         for (int x = bottom_left[0]; x < top_right[0]; x++)
         {
-            // NOTE: don't quite understand this, and I think it may be wrong
             float sample_point[2] = {(x + 0.5f - x_offset) * x_scale / src->width, (y + 0.5f - y_offset) * y_scale / src->height};
             float sample[MAX_FPP];
             sample_bilinear(sample_point[0], sample_point[1], sample, src);
