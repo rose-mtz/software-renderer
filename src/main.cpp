@@ -238,11 +238,12 @@ void render_scene(FrameBuffer* frame_buffer)
 
 void draw()
 {
+    Vec3f BLACK (0.0f);
     Vec3f BLUEISH (0.2f, 0.2f, clampf(0.5f * sin(SDL_GetTicks() * 0.0005f) + 0.5f, 0.0f, 1.0f));
     Vec3f YELLOW (0.85f, 0.9f, 0.0f);
 
     // Clear and render into render buffer
-    clear_buffer(BLUEISH.raw, state.render_buffer->color);
+    clear_buffer(BLACK.raw, state.render_buffer->color);
     clear_buffer(&MAX_DEPTH, state.render_buffer->depth);
     render_scene(state.render_buffer);
 
@@ -381,7 +382,14 @@ void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer, Bu
     {
         sample_bilinear(clampf(frag.uv.x, 0.0f, 1.0f), clampf(frag.uv.y, 0.0f, 1.0f), frag.color.raw, texture);
 
-        set_element(frag.pixel.x, frag.pixel.y, frag.color.raw, color_buffer);
+        float n = state.camera.near;
+        float f = state.camera.far;
+
+        float depth_normalized = (1.0f - ((std::abs(frag.depth) - n) / (f - n))) * 1.5f;
+        depth_normalized = clampf(depth_normalized, 0.0f, 1.0f);
+        Vec3f gray_scale_depth_color (depth_normalized);
+
+        set_element(frag.pixel.x, frag.pixel.y, gray_scale_depth_color.raw, color_buffer);
         set_element(frag.pixel.x, frag.pixel.y, &frag.depth, depth_buffer);
     }
 }
