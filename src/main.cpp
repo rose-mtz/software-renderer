@@ -48,6 +48,8 @@ struct ProgramState
     Vec2f mouse_pos;
     Camera camera;
     std::vector<Object> objects;
+
+    Vec3f rubik_euler_angles;
 } state;
 
 const int RESOLUTION_SCALERS_COUNT = 6;
@@ -108,13 +110,35 @@ void init()
     tga_image.read_tga_file("img/Cubie_Face_Red.tga");
 
     Object cube;
-    cube.translation = Vec3f(0.0f, 0.0f, 0.0f);
-    cube.yaw = radians(90.0f);
-    cube.pitch = radians(15.0f);
-    cube.roll = radians(-90.0f);
-    cube.scale = Vec3f(2.0f, 1.0f, 1.0f);
+    cube.yaw = radians(0.0f);
+    cube.pitch = radians(0.0f);
+    cube.roll = radians(0.0f);
+    cube.scale = Vec3f(1.0f, 1.0f, 1.0f);
     cube.mesh = new Mesh("obj/cube.obj");
     cube.texture = tga_image_to_buffer(tga_image);
+
+    cube.translation = Vec3f(0.5f, -0.5f, 0.5f); // front-right bottom
+    state.objects.push_back(cube);
+
+    cube.translation = Vec3f(-0.5f, -0.5f, 0.5f); // front-left bottom
+    state.objects.push_back(cube);
+
+    cube.translation = Vec3f(-0.5f, -0.5f, -0.5f); // back-left bottom
+    state.objects.push_back(cube);
+
+    cube.translation = Vec3f(0.5f, -0.5f, -0.5f); // back-right bottom
+    state.objects.push_back(cube);
+
+    cube.translation = Vec3f(0.5f, 0.5f, 0.5f); // front-right top
+    state.objects.push_back(cube);
+
+    cube.translation = Vec3f(-0.5f, 0.5f, 0.5f); // front-left top
+    state.objects.push_back(cube);
+
+    cube.translation = Vec3f(-0.5f, 0.5f, -0.5f); // back-left top
+    state.objects.push_back(cube);
+
+    cube.translation = Vec3f(0.5f, 0.5f, -0.5f); // back-right top
     state.objects.push_back(cube);
 }
 
@@ -150,11 +174,12 @@ void render_scene(FrameBuffer* frame_buffer)
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f)); // ASSUMPTION: virtual screen height is 1, and width is aspect-ratio
     Mat4x4f world  = Mat4x4f::identity_matrix();
+    Mat4x4f rubik  = Mat4x4f::rotation_y(state.rubik_euler_angles.y) * Mat4x4f::rotation_x(state.rubik_euler_angles.x) * Mat4x4f::rotation_z(state.rubik_euler_angles.z);
 
     for (int o = 0; o < state.objects.size(); o++)
     {
         Object& obj   = state.objects[o];
-        Mat4x4f local = Mat4x4f::translation(obj.translation) * Mat4x4f::rotation_y(obj.yaw) * Mat4x4f::rotation_x(obj.pitch) * Mat4x4f::rotation_z(obj.roll) * Mat4x4f::scale(obj.scale);
+        Mat4x4f local = rubik * Mat4x4f::translation(obj.translation) * Mat4x4f::rotation_y(obj.yaw) * Mat4x4f::rotation_x(obj.pitch) * Mat4x4f::rotation_z(obj.roll) * Mat4x4f::scale(obj.scale);
 
         for (int f = 0; f < obj.mesh->faces.size(); f++)
         {
@@ -230,10 +255,10 @@ void draw()
     render_scene(state.render_buffer);
 
     // Clear and blit onto screen res buffer
-    Vec2f offset (state.screen_res_buffer->width * (0.5f * sin(SDL_GetTicks() * 0.001f) + 0.25f), state.screen_res_buffer->height * (0.5f * cos(SDL_GetTicks() * 0.001f) + 0.25f));
+    Vec2f offset (0, 0);
     clear_buffer(YELLOW.raw, state.screen_res_buffer->color);
     clear_buffer(&MAX_DEPTH, state.screen_res_buffer->depth);
-    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, clampf(0.30f * sin(SDL_GetTicks() * 0.0005f) + 0.5f, 0.20f, 0.80f), 0.75f);
+    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 1.0f, 1.0f);
 
     // Blit onto window
     blit_window(state.screen_res_buffer->color->data);
@@ -241,9 +266,13 @@ void draw()
 
 void update()
 {
-    state.objects[0].pitch += 0.01f;
-    state.objects[0].yaw += 0.025f;
-    state.objects[0].scale.x = sin(SDL_GetTicks() * 0.0025f) + 2.0f; 
+    state.rubik_euler_angles.y += 0.015f;
+    state.rubik_euler_angles.x = radians(7.0f) * sin(SDL_GetTicks() * 0.003f);
+    state.rubik_euler_angles.z = 0.0f;
+
+    // state.objects[0].pitch += 0.01f;
+    // state.objects[0].yaw += 0.025f;
+    // state.objects[0].scale.x = sin(SDL_GetTicks() * 0.0025f) + 2.0f; 
 
     if (input_actions.exit_program)
     {
