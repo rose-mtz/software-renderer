@@ -13,6 +13,7 @@
 #include "Geometry.h"
 #include "Buffer.h"
 #include "Util.h"
+#include <cassert>
 
 struct Actions
 {
@@ -63,6 +64,7 @@ void handle_time();
 void init();
 
 Buffer* tga_image_to_buffer(TGAImage& img);
+void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer);
 
 int main()
 {
@@ -171,6 +173,9 @@ void handle_events()
 
 void render_scene(FrameBuffer* frame_buffer)
 {
+    static std::vector<Fragment> fragments (1000);
+    fragments.clear();
+
     Mat4x4f camera = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up);
     Mat4x4f device = Mat4x4f::translation(Vec3f(frame_buffer->width/2.0f, frame_buffer->height/2.0f, 0.0f)) * Mat4x4f::scale(Vec3f(frame_buffer->width/state.camera.aspect_ratio, frame_buffer->height, 1.0f)); // ASSUMPTION: virtual screen height is 1, and width is aspect-ratio
     Mat4x4f world  = Mat4x4f::identity_matrix();
@@ -220,26 +225,13 @@ void render_scene(FrameBuffer* frame_buffer)
                 vertex.cull = Vec3f(vertex.device.x, vertex.device.y, 0.0f); // So that rasterizer can cut up polygons into triangles
             }
 
-            rasterize_polygon(vertices, frame_buffer->color, frame_buffer->depth, obj.texture);
+            rasterize_polygon(vertices, frame_buffer->color, frame_buffer->depth, obj.texture, fragments);
 
-            // for (int e = 0; e < vertices.size(); e++)
-            // {
-            //     Vertex v0 = vertices[e];
-            //     Vertex v1 = vertices[(e + 1) % vertices.size()];
-
-            //     v0.color = Vec3f(1.0f);
-            //     v1.color = Vec3f(1.0f);
-
-            //     rasterize_line(v0, v1, 5, frame_buffer->color, frame_buffer->depth);
-            // }
-
-            // for (int p = 0; p < vertices.size(); p++)
-            // {
-            //     Vertex point = vertices[p];
-            //     point.color = Vec3f(1.0f, 1.0f, 1.0f);
-
-            //     rasterize_point(point, 8, frame_buffer->color, frame_buffer->depth  );
-            // }
+            for (int i = 0; i < fragments.size(); i++)
+            {
+                set_fragment(fragments[i], frame_buffer->color, frame_buffer->depth);
+            }
+            fragments.clear();
         }
     }
 }
@@ -377,4 +369,18 @@ Buffer* tga_image_to_buffer(TGAImage& img)
     }
 
     return buffer;
+}
+
+void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer)
+{
+    assert(frag.color.x != 0.0f || frag.color.y != 0.0f || frag.color.z != 0.0f);
+    bool is_out_of_bounds = (frag.pixel.x < 0 || frag.pixel.x >= color_buffer->width) || (frag.pixel.y < 0 || frag.pixel.y >= color_buffer->height);
+    float depth; get_element(frag.pixel.x, frag.pixel.y, &depth, depth_buffer);
+    bool is_hidden = depth > frag.depth;
+
+    if (!is_out_of_bounds && !is_hidden)
+    {
+        set_element(frag.pixel.x, frag.pixel.y, frag.color.raw, color_buffer);
+        set_element(frag.pixel.x, frag.pixel.y, &frag.depth, depth_buffer);
+    }
 }
