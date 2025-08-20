@@ -385,7 +385,7 @@ void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer, Bu
         float n = state.camera.near;
         float f = state.camera.far;
 
-        float depth_normalized = (1.0f - ((std::abs(frag.depth) - n) / (f - n))) * 1.5f;
+        float depth_normalized = (1.0f - ((std::abs(frag.depth) - n) / (7.0f)));
         depth_normalized = clampf(depth_normalized, 0.0f, 1.0f);
         Vec3f gray_scale_depth_color (depth_normalized);
 
