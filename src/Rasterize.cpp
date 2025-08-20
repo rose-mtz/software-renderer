@@ -8,7 +8,7 @@
 // For checking if two device.y's are the same
 const float EPSILON = 0.001f;
 
-void rasterize_point(const Vertex& v, int radius, Buffer* color_buffer, Buffer* depth_buffer, std::vector<Fragment>& fragments)
+void rasterize_point(const Vertex& v, int radius, std::vector<Fragment>& fragments)
 {
     // TODO: device point could be outside of bounds due to float point presicon/rounding, so add asserts, and add robustness
 
@@ -60,7 +60,6 @@ void rasterize_point(const Vertex& v, int radius, Buffer* color_buffer, Buffer* 
             frag.color = v.color;
             frag.pixel = Vec2i(cur_column, cur_scanline);
             frag.depth = v.depth;
-            // set_fragment(frag, color_buffer, depth_buffer);
             fragments.push_back(frag);
 
             cur_column++;
@@ -70,7 +69,7 @@ void rasterize_point(const Vertex& v, int radius, Buffer* color_buffer, Buffer* 
     }
 }
 
-void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* color_buffer, Buffer* depth_buffer, std::vector<Fragment>& fragments)
+void rasterize_line(const Vertex& v0, const Vertex& v1, int width, std::vector<Fragment>& fragments)
 {
     // TODO: device points could be outside of bounds due to float point presicon/rounding, so add asserts, and add robustness
     
@@ -140,7 +139,6 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* color
             {
                 frag.pixel = Vec2i(cur_column, shifted_scanline);
             }
-            // set_fragment(frag, color_buffer, depth_buffer);
             fragments.push_back(frag);
         }
 
@@ -149,7 +147,7 @@ void rasterize_line(const Vertex& v0, const Vertex& v1, int width, Buffer* color
     }
 }
 
-void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Buffer* color_buffer, Buffer* depth_buffer, Buffer* texture, std::vector<Fragment>& fragments)
+void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, int height, int width, std::vector<Fragment>& fragments)
 {
     /**
      * PROCESS:
@@ -169,12 +167,12 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
      */
 
     const float FUDGE = 1.0f;
-    assert((v0.device.x >= 0.0f && v0.device.x <= color_buffer->width)  || (v0.device.x > color_buffer->width  && (v0.device.x - color_buffer->width) < FUDGE)  || (v0.device.x < 0.0f && std::abs(v0.device.x) < FUDGE)); 
-    assert((v0.device.y >= 0.0f && v0.device.y <= color_buffer->height) || (v0.device.y > color_buffer->height && (v0.device.y - color_buffer->height) < FUDGE) || (v0.device.y < 0.0f && std::abs(v0.device.y) < FUDGE)); 
-    assert((v1.device.x >= 0.0f && v1.device.x <= color_buffer->width)  || (v1.device.x > color_buffer->width  && (v1.device.x - color_buffer->width) < FUDGE)  || (v1.device.x < 0.0f && std::abs(v1.device.x) < FUDGE)); 
-    assert((v1.device.y >= 0.0f && v1.device.y <= color_buffer->height) || (v1.device.y > color_buffer->height && (v1.device.y - color_buffer->height) < FUDGE) || (v1.device.y < 0.0f && std::abs(v1.device.y) < FUDGE)); 
-    assert((v2.device.x >= 0.0f && v2.device.x <= color_buffer->width)  || (v2.device.x > color_buffer->width  && (v2.device.x - color_buffer->width) < FUDGE)  || (v2.device.x < 0.0f && std::abs(v2.device.x) < FUDGE)); 
-    assert((v2.device.y >= 0.0f && v2.device.y <= color_buffer->height) || (v2.device.y > color_buffer->height && (v2.device.y - color_buffer->height) < FUDGE) || (v2.device.y < 0.0f && std::abs(v2.device.y) < FUDGE)); 
+    assert((v0.device.x >= 0.0f && v0.device.x <= width)  || (v0.device.x > width  && (v0.device.x - width) < FUDGE)  || (v0.device.x < 0.0f && std::abs(v0.device.x) < FUDGE)); 
+    assert((v0.device.y >= 0.0f && v0.device.y <= height) || (v0.device.y > height && (v0.device.y - height) < FUDGE) || (v0.device.y < 0.0f && std::abs(v0.device.y) < FUDGE)); 
+    assert((v1.device.x >= 0.0f && v1.device.x <= width)  || (v1.device.x > width  && (v1.device.x - width) < FUDGE)  || (v1.device.x < 0.0f && std::abs(v1.device.x) < FUDGE)); 
+    assert((v1.device.y >= 0.0f && v1.device.y <= height) || (v1.device.y > height && (v1.device.y - height) < FUDGE) || (v1.device.y < 0.0f && std::abs(v1.device.y) < FUDGE)); 
+    assert((v2.device.x >= 0.0f && v2.device.x <= width)  || (v2.device.x > width  && (v2.device.x - width) < FUDGE)  || (v2.device.x < 0.0f && std::abs(v2.device.x) < FUDGE)); 
+    assert((v2.device.y >= 0.0f && v2.device.y <= height) || (v2.device.y > height && (v2.device.y - height) < FUDGE) || (v2.device.y < 0.0f && std::abs(v2.device.y) < FUDGE)); 
 
     // NOTE: triangle rasterization process can sample points outside of the triangle
     //       this can lead to unexpected values for the interpolated vertex
@@ -222,7 +220,7 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 
     EdgeTracker scanline_edge = set_up_edge_tracker(*labels.left, *labels.right, false);
     int stop_scanline = is_apex_above_other_vertices ? ceil(labels.apex->device.y) : ceil(labels.left->device.y);
-    stop_scanline = min_i(color_buffer->height, stop_scanline); // ROBUSTNESS
+    stop_scanline = min_i(height, stop_scanline); // ROBUSTNESS
 
     while (cur_scanline < stop_scanline)
     {
@@ -234,14 +232,13 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
         cur_pixel.x = max_i(0, cur_pixel.x); // ROBUSTNESS
 
         int right_stop = floor(right.v.device.x);
-        right_stop = min_i(color_buffer->width, right_stop); // ROBUSTNESS
+        right_stop = min_i(width, right_stop); // ROBUSTNESS
         while (cur_pixel.x < right_stop)
         {
             Fragment frag;
-            sample_bilinear(clampf(scanline_edge.v.uv.x, 0.0f, 1.0f), clampf(scanline_edge.v.uv.y, 0.0f, 1.0f), frag.color.raw, texture); // ROBUSTNESS
             frag.pixel = Vec2i(cur_pixel.x, cur_pixel.y);
             frag.depth = scanline_edge.v.depth;
-            // set_fragment(frag, color_buffer, depth_buffer);
+            frag.uv = scanline_edge.v.uv;
             fragments.push_back(frag);
 
             cur_pixel.x++;
@@ -256,7 +253,7 @@ void rasterize_triangle(const Vertex& v0, const Vertex& v1, const Vertex& v2, Bu
 
 // Polygon is assumed 'flat' (in all dimension)
 // Polygon must have some winding
-void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* color_buffer, Buffer* depth_buffer, Buffer* texture, std::vector<Fragment>& fragments)
+void rasterize_polygon(const std::vector<Vertex>& vertices, int height, int width, std::vector<Fragment>& fragments)
 {
     // ROBUSTNESS: degenerate polygon check?
 
@@ -282,12 +279,12 @@ void rasterize_polygon(const std::vector<Vertex>& vertices, Buffer* color_buffer
 
         if (bottom.size() == 4)
         {
-            rasterize_triangle(bottom[0], bottom[1], bottom[2], color_buffer, depth_buffer, texture, fragments);
-            rasterize_triangle(bottom[2], bottom[3], bottom[0], color_buffer, depth_buffer, texture, fragments);
+            rasterize_triangle(bottom[0], bottom[1], bottom[2], height, width, fragments);
+            rasterize_triangle(bottom[2], bottom[3], bottom[0], height, width, fragments);
         }
         else if (bottom.size() == 3)
         {
-            rasterize_triangle(bottom[0], bottom[1], bottom[2], color_buffer, depth_buffer, texture, fragments);
+            rasterize_triangle(bottom[0], bottom[1], bottom[2], height, width, fragments);
         }
 
         std::swap(cur_polygon, top);

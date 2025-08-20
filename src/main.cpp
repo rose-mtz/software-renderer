@@ -64,7 +64,7 @@ void handle_time();
 void init();
 
 Buffer* tga_image_to_buffer(TGAImage& img);
-void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer);
+void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer, Buffer* texture);
 
 int main()
 {
@@ -225,11 +225,11 @@ void render_scene(FrameBuffer* frame_buffer)
                 vertex.cull = Vec3f(vertex.device.x, vertex.device.y, 0.0f); // So that rasterizer can cut up polygons into triangles
             }
 
-            rasterize_polygon(vertices, frame_buffer->color, frame_buffer->depth, obj.texture, fragments);
+            rasterize_polygon(vertices, frame_buffer->height, frame_buffer->width, fragments);
 
             for (int i = 0; i < fragments.size(); i++)
             {
-                set_fragment(fragments[i], frame_buffer->color, frame_buffer->depth);
+                set_fragment(fragments[i], frame_buffer->color, frame_buffer->depth, obj.texture);
             }
             fragments.clear();
         }
@@ -371,15 +371,16 @@ Buffer* tga_image_to_buffer(TGAImage& img)
     return buffer;
 }
 
-void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer)
+void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer, Buffer* texture)
 {
-    assert(frag.color.x != 0.0f || frag.color.y != 0.0f || frag.color.z != 0.0f);
     bool is_out_of_bounds = (frag.pixel.x < 0 || frag.pixel.x >= color_buffer->width) || (frag.pixel.y < 0 || frag.pixel.y >= color_buffer->height);
     float depth; get_element(frag.pixel.x, frag.pixel.y, &depth, depth_buffer);
     bool is_hidden = depth > frag.depth;
 
     if (!is_out_of_bounds && !is_hidden)
     {
+        sample_bilinear(clampf(frag.uv.x, 0.0f, 1.0f), clampf(frag.uv.y, 0.0f, 1.0f), frag.color.raw, texture);
+
         set_element(frag.pixel.x, frag.pixel.y, frag.color.raw, color_buffer);
         set_element(frag.pixel.x, frag.pixel.y, &frag.depth, depth_buffer);
     }
