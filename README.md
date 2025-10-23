@@ -30,3 +30,4 @@ https://github.com/user-attachments/assets/6b2760aa-7fe5-4734-a816-b5701a50b4ae
 
 Some of the recourses I used to understand how to build this project:
 - [UC Davis Lectures](https://youtube.com/playlist?list=PL_w_qWAQZtAZhtzPI5pkAtcUVgmzdAP8g&si=jGMOqZBvyhRn1Lgz) for scanline rasterization, geometry culling, and the graphic pipeline.
+- [Tiny Renderer](https://haqr.eu/tinyrenderer/) used some files (vector class, and tga image importer class)
