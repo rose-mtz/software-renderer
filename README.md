@@ -20,6 +20,8 @@ https://github.com/user-attachments/assets/332e6a71-32b3-4c1f-a781-08ed17f2d9d6
 
 Wide Resolution
 
+https://github.com/user-attachments/assets/204bca88-cb00-4869-afb0-e0f39954598f
+
 Thin Resolution
 
 Culling
