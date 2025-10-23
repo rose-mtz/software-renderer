@@ -18,14 +18,13 @@ Low & Medium Resolution
 
 https://github.com/user-attachments/assets/332e6a71-32b3-4c1f-a781-08ed17f2d9d6
 
-Wide Resolution
+Wide Aspect Ratio
 
 https://github.com/user-attachments/assets/204bca88-cb00-4869-afb0-e0f39954598f
 
-Thin Resolution
-
 Culling
 
+https://github.com/user-attachments/assets/6b2760aa-7fe5-4734-a816-b5701a50b4ae
 
 # Credit
 
