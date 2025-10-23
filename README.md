@@ -14,7 +14,9 @@ A custom graphics renderer that I am building. It is not done.
 
 # Video Demos
 
-Low Resolution
+Low & Medium Resolution
+
+https://github.com/user-attachments/assets/332e6a71-32b3-4c1f-a781-08ed17f2d9d6
 
 Wide Resolution
 
