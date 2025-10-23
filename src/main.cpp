@@ -239,19 +239,19 @@ void render_scene(FrameBuffer* frame_buffer)
 void draw()
 {
     Vec3f BLACK (0.0f);
-    Vec3f BLUEISH (0.2f, 0.2f, clampf(0.5f * sin(SDL_GetTicks() * 0.0005f) + 0.5f, 0.0f, 1.0f));
-    Vec3f YELLOW (0.85f, 0.9f, 0.0f);
+    Vec3f BLUEISH (0.1f, 0.1f, 0.2f * sin(SDL_GetTicks() * 0.0005f) + 0.5f);
+    Vec3f YELLOW (0.5f, 0.7f, 0.0f);
 
     // Clear and render into render buffer
-    clear_buffer(BLACK.raw, state.render_buffer->color);
+    clear_buffer(BLUEISH.raw, state.render_buffer->color);
     clear_buffer(&MAX_DEPTH, state.render_buffer->depth);
     render_scene(state.render_buffer);
 
     // Clear and blit onto screen res buffer
-    Vec2f offset (0, 0);
+    Vec2f offset (0.1 * state.screen_res_buffer->width, 0.1 * state.screen_res_buffer->height);
     clear_buffer(YELLOW.raw, state.screen_res_buffer->color);
     clear_buffer(&MAX_DEPTH, state.screen_res_buffer->depth);
-    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 1.0f, 1.0f);
+    blit_buffer(state.render_buffer->color, state.screen_res_buffer->color, offset.x, offset.y, 0.8f, 0.8f);
 
     // Blit onto window
     blit_window(state.screen_res_buffer->color->data);
@@ -331,7 +331,7 @@ void update()
         state.camera.dir = look_towards;
     }
 
-    float movement_sensitivity = 0.01f;
+    float movement_sensitivity = 0.025f;
     if (input_actions.move_camera_forward)
     {
         Mat3x3f camera_inv = Mat4x4f::look_at(state.camera.pos, state.camera.dir, state.camera.up).truncated().transposed();
@@ -389,7 +389,9 @@ void set_fragment(Fragment& frag, Buffer* color_buffer, Buffer* depth_buffer, Bu
         depth_normalized = clampf(depth_normalized, 0.0f, 1.0f);
         Vec3f gray_scale_depth_color (depth_normalized);
 
-        set_element(frag.pixel.x, frag.pixel.y, gray_scale_depth_color.raw, color_buffer);
+        Vec3f frag_color = frag.color;
+
+        set_element(frag.pixel.x, frag.pixel.y, frag_color.raw, color_buffer);
         set_element(frag.pixel.x, frag.pixel.y, &frag.depth, depth_buffer);
     }
 }
